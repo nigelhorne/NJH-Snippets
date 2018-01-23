@@ -249,7 +249,8 @@ sub selectall_hashref {
 	my @rc;
 	while (my $href = $sth->fetchrow_hashref()) {
 		push @rc, $href;
-		last if(!wantarray);
+		# TODO - add this to selectall_hash when that is written
+		# last if(!wantarray);
 	}
 	if($c) {
 		$c->set($key, \@rc, '1 hour');
