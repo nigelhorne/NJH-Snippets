@@ -1,22 +1,14 @@
 package NJH::Snippets::DB;
 
-# Read-only access to databases
-# Usually all that's neeeded to access a database called 'bar' is a class declaration such as this:
+# Author Nigel Horne: njh@bandsman.co.uk
+# Copyright (C) 2015-2018, Nigel Horne
 
-# package Foo::Bar;
-# 
-# # The bar database
-# 
-# use NJH::Snippets::DB;
-# 
-# our @ISA = ('NJH::Snippets::DB');
-# 
-# 1;
-#
-# and code such as this in the main program
-# use Foo::Bar
-#
-# my $foo = Foo::Bar->new({ directory => "/var/lib/db/foo" });
+# Usage is subject to licence terms.
+# The licence terms of this software are as follows:
+# Personal single user, single computer use: GPL2
+# All other users (including Commercial, Charity, Educational, Government)
+#	must apply in writing for a licence for use from Nigel Horne at the
+#	above e-mail.
 
 use warnings;
 use strict;
