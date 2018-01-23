@@ -3,13 +3,13 @@ package NJH::Snippets::DB;
 # Read-only access to databases
 # Usually all that's neeeded to access a database called 'bar' is a class declaration such as this:
 
-# package Foo::Bar
+# package Foo::Bar;
 # 
 # # The bar database
 # 
-# use NJH::Snippets::DB
+# use NJH::Snippets::DB;
 # 
-# our @ISA = ('NJH::Snippets::DB')
+# our @ISA = ('NJH::Snippets::DB');
 # 
 # 1;
 #
@@ -45,6 +45,7 @@ sub new {
 		die "$class: abstract class";
 	}
 
+	die "$class: where are the files?" unless($directory || $args{'directory'});
 	# init(\%args);
 
 	return bless {
@@ -54,7 +55,7 @@ sub new {
 	}, $class;
 }
 
-# Can also be run as a class level VWF::DB::init(directory => '../databases')
+# Can also be run as a class level NJH::Snippets::DB::init(directory => '../databases')
 sub init {
 	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
