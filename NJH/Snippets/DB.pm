@@ -208,6 +208,7 @@ sub selectall_hashref {
 	return \@rc;
 }
 
+# Returns an array of hash references
 sub selectall_hash {
 	my $self = shift;
 	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
@@ -221,7 +222,7 @@ sub selectall_hash {
 		if($self->{'logger'}) {
 			$self->{'logger'}->trace("$table: selectall_hash fast track return");
 		}
-		return $self->{'data'};
+		return @{$self->{'data'}};
 	}
 
 	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
