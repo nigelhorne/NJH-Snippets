@@ -70,7 +70,6 @@ sub init {
 	if($args{'databases'}) {
 		@databases = $args{'databases'};
 	}
-	throw Error::Simple('directory not given') unless($directory);
 }
 
 sub set_logger {
