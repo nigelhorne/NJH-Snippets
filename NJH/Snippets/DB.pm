@@ -296,14 +296,23 @@ sub fetchrow_hashref {
 }
 
 # Execute the given SQL on the data
+# In an array context, returns an array of hash refs, in a scalar context returns a hash of the first row
 sub execute {
 	my $self = shift;
-	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
+	my %args;
+
+	if(ref($_[0]) eq 'HASH') {
+		%args = %{$_[0]};
+	} elsif(scalar(@_) % 2 == 0) {
+		%args = @_;
+	} else {
+		$args{'query'} = shift;
+	}
 
 	my $table = $self->{table} || ref($self);
 	$table =~ s/.*:://;
 
-	$self->_open() if(!$self->{table});
+	$self->_open() if(!$self->{$table});
 
 	my $query = $args{'query'};
 	if($self->{'logger'}) {
@@ -313,6 +322,7 @@ sub execute {
 	$sth->execute() || throw Error::Simple($query);
 	my @rc;
 	while(my $href = $sth->fetchrow_hashref()) {
+		return $href if(!wantarray);
 		push @rc, $href;
 	}
 
