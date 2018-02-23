@@ -10,6 +10,18 @@ package NJH::Snippets::DB;
 #	must apply in writing for a licence for use from Nigel Horne at the
 #	above e-mail.
 
+# Abstract class giving read-only access to CSV, XML and SQLite databases
+
+# You can then access the files in $directory/foo.csv via this class:
+
+# package MyPackageName::DB::foo;
+
+# use NJH::Snippets::DB;
+
+# our @ISA = ('NJH::Snippets::DB');
+
+# 1;
+
 use warnings;
 use strict;
 
@@ -42,8 +54,9 @@ sub new {
 
 	return bless {
 		logger => $args{'logger'} || $logger,
-		directory => $args{'directory'} || $directory,
-		cache => $args{'cache'} || $cache
+		directory => $args{'directory'} || $directory,	# The directory conainting the tables in XML, SQLite or CSV format
+		cache => $args{'cache'} || $cache,
+		table => $args{'table'}	# The name of the file containing the table, defaults to the class name
 	}, $class;
 }
 
@@ -83,7 +96,7 @@ sub _open {
 		((ref($_[0]) eq 'HASH') ? %{$_[0]} : @_)
 	);
 
-	my $table = ref($self);
+	my $table = $self->{table} || ref($self);
 	$table =~ s/.*:://;
 
 	if($self->{'logger'}) {
@@ -213,7 +226,7 @@ sub selectall_hash {
 	my $self = shift;
 	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
-	my $table = ref($self);
+	my $table = $self->{table} || ref($self);
 	$table =~ s/.*:://;
 
 	$self->_open() if(!$self->{$table});
@@ -242,7 +255,7 @@ sub selectall_hash {
 	my $c;
 	if($c = $self->{cache}) {
 		if(my $rc = $c->get($key)) {
-			return $rc;
+			return @{$rc};
 		}
 	}
 	my @rc;
@@ -262,10 +275,10 @@ sub fetchrow_hashref {
 	my $self = shift;
 	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
-	my $table = ref($self);
+	my $table = $self->{table} || ref($self);
 	$table =~ s/.*:://;
 
-	$self->_open() if(!$self->{table});
+	$self->_open() if(!$self->{$table});
 
 	# Only want one row, so use distinct
 	my $query = "SELECT DISTINCT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
@@ -288,7 +301,7 @@ sub execute {
 	my $self = shift;
 	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
-	my $table = ref($self);
+	my $table = $self->{table} || ref($self);
 	$table =~ s/.*:://;
 
 	$self->_open() if(!$self->{table});
@@ -300,7 +313,7 @@ sub execute {
 	my $sth = $self->{$table}->prepare($query);
 	$sth->execute() || throw Error::Simple($query);
 	my @rc;
-	while (my $href = $sth->fetchrow_hashref()) {
+	while(my $href = $sth->fetchrow_hashref()) {
 		push @rc, $href;
 	}
 
@@ -330,7 +343,7 @@ sub AUTOLOAD {
 
 	my $self = shift or return undef;
 
-	my $table = ref($self);
+	my $table = $self->{table} || ref($self);
 	$table =~ s/.*:://;
 
 	$self->_open() if(!$self->{$table});
