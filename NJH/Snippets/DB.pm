@@ -286,14 +286,13 @@ sub fetchrow_hashref {
 
 	$self->_open() if(!$self->{$table});
 
-	# Only want one row, so use distinct
-	my $query = "SELECT DISTINCT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	my @args;
 	foreach my $c1(keys(%args)) {
 		$query .= " AND $c1 LIKE ?";
 		push @args, $args{$c1};
 	}
-	$query .= ' ORDER BY entry';
+	$query .= ' ORDER BY entry LIMIT 1';
 	if($self->{'logger'}) {
 		if(defined($args[0])) {
 			$self->{'logger'}->debug("fetchrow_hashref $query: " . join(', ', @args));
@@ -398,6 +397,9 @@ sub AUTOLOAD {
 		push @args, $params{$c1};
 	}
 	$query .= " ORDER BY $column";
+	if(!wantarray) {
+		$query .= ' LIMIT 1';
+	}
 	if($self->{'logger'}) {
 		if(scalar(@args) && $args[0]) {
 			$self->{'logger'}->debug("AUTOLOAD $query: " . join(', ', @args));
