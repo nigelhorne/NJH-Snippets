@@ -115,6 +115,8 @@ sub _open {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$slurp_file", undef, undef, {
 			sqlite_open_flags => SQLITE_OPEN_READONLY,
 		});
+		$dbh->do('PRAGMA synchronous = OFF');
+		$dbh->do('PRAGMA cache_size = 65536');
 		if($self->{'logger'}) {
 			$self->{'logger'}->debug("read in $table from SQLite $slurp_file");
 		}
