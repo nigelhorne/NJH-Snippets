@@ -243,7 +243,7 @@ sub selectall_hash {
 
 	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	my @args;
-	foreach my $c1(sort keys(%params)) {	# sort so that the key is always the same
+	foreach my $c1(sort keys(%args)) {	# sort so that the key is always the same
 		$query .= " AND $c1 LIKE ?";
 		push @args, $args{$c1};
 	}
@@ -292,7 +292,7 @@ sub fetchrow_hashref {
 
 	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	my @args;
-	foreach my $c1(sort keys(%params)) {	# sort so that the key is always the same
+	foreach my $c1(sort keys(%args)) {	# sort so that the key is always the same
 		$query .= " AND $c1 LIKE ?";
 		push @args, $args{$c1};
 	}
