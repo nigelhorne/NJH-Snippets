@@ -35,6 +35,7 @@ use File::Temp;
 use Gzip::Faster;
 use DBD::SQLite::Constants qw/:file_open/;	# For SQLITE_OPEN_READONLY
 use Error::Simple;
+use Carp;
 
 our @databases;
 our $directory;
@@ -81,6 +82,8 @@ sub set_logger {
 
 	if(ref($_[0]) eq 'HASH') {
 		%args = %{$_[0]};
+	} elsif(ref($_[0])) {
+		Carp::croak("Usage: setlogger(logger => \$logger)");
 	} elsif(scalar(@_) % 2 == 0) {
 		%args = @_;
 	} else {
@@ -240,6 +243,8 @@ sub selectall_hash {
 		}
 		return @{$self->{'data'}};
 	}
+	# if((scalar(keys %args) == 1) && $self->{'data'} && defined($args{'entry'})) {
+	# }
 
 	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	my @args;
@@ -329,6 +334,8 @@ sub execute {
 
 	if(ref($_[0]) eq 'HASH') {
 		%args = %{$_[0]};
+	} elsif(ref($_[0])) {
+		Carp::croak("Usage: execute(query => \$query)");
 	} elsif(scalar(@_) % 2 == 0) {
 		%args = @_;
 	} else {
@@ -342,7 +349,7 @@ sub execute {
 
 	my $query = $args{'query'};
 	if($self->{'logger'}) {
-		$self->{'logger'}->debug("fetchrow_hashref $query");
+		$self->{'logger'}->debug("execute $query");
 	}
 	my $sth = $self->{$table}->prepare($query);
 	$sth->execute() || throw Error::Simple($query);
