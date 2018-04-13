@@ -83,7 +83,7 @@ sub set_logger {
 	if(ref($_[0]) eq 'HASH') {
 		%args = %{$_[0]};
 	} elsif(ref($_[0])) {
-		Carp::croak("Usage: setlogger(logger => \$logger)");
+		Carp::croak('Usage: setlogger(logger => $logger)');
 	} elsif(scalar(@_) % 2 == 0) {
 		%args = @_;
 	} else {
@@ -190,9 +190,8 @@ sub _open {
 				file => $slurp_file
 			)};
 
-			# Don't use blank lines or comments
+			# Ignore blank lines or lines starting with # in the CSV file
 			@data = grep { $_->{'entry'} !~ /^#/ } grep { defined($_->{'entry'}) } @data;
-			# $self->{'data'} = @data;
 			my $i = 0;
 			$self->{'data'} = ();
 			foreach my $d(@data) {
@@ -246,7 +245,7 @@ sub selectall_hash {
 	# if((scalar(keys %args) == 1) && $self->{'data'} && defined($args{'entry'})) {
 	# }
 
-	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL";
 	my @args;
 	foreach my $c1(sort keys(%args)) {	# sort so that the key is always the same
 		$query .= " AND $c1 LIKE ?";
@@ -295,7 +294,7 @@ sub fetchrow_hashref {
 
 	$self->_open() if(!$self->{$table});
 
-	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL";
 	my @args;
 	foreach my $c1(sort keys(%args)) {	# sort so that the key is always the same
 		$query .= " AND $c1 LIKE ?";
@@ -394,9 +393,9 @@ sub AUTOLOAD {
 
 	my $query;
 	if(wantarray && !delete($params{'distinct'})) {
-		$query = "SELECT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+		$query = "SELECT $column FROM $table WHERE entry IS NOT NULL";
 	} else {
-		$query = "SELECT DISTINCT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+		$query = "SELECT DISTINCT $column FROM $table WHERE entry IS NOT NULL";
 	}
 	my @args;
 	foreach my $c1(keys(%params)) {
