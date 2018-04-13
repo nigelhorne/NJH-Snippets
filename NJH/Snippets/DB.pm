@@ -192,6 +192,7 @@ sub _open {
 
 			# Ignore blank lines or lines starting with # in the CSV file
 			@data = grep { $_->{'entry'} !~ /^#/ } grep { defined($_->{'entry'}) } @data;
+			# $self->{'data'} = @data;
 			my $i = 0;
 			$self->{'data'} = ();
 			foreach my $d(@data) {
@@ -334,7 +335,7 @@ sub execute {
 	if(ref($_[0]) eq 'HASH') {
 		%args = %{$_[0]};
 	} elsif(ref($_[0])) {
-		Carp::croak("Usage: execute(query => \$query)");
+		Carp::croak('Usage: execute(query => $query)');
 	} elsif(scalar(@_) % 2 == 0) {
 		%args = @_;
 	} else {
