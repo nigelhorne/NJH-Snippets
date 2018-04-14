@@ -83,7 +83,7 @@ sub set_logger {
 	if(ref($_[0]) eq 'HASH') {
 		%args = %{$_[0]};
 	} elsif(ref($_[0])) {
-		Carp::croak('Usage: setlogger(logger => $logger)');
+		Carp::croak('Usage: set_logger(logger => $logger)');
 	} elsif(scalar(@_) % 2 == 0) {
 		%args = @_;
 	} else {
