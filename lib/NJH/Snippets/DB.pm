@@ -144,7 +144,7 @@ sub _open {
 							$table => {
 								col_names => $args{'column_names'},
 							}
-						}
+						},
 					}
 				);
 			} else {
@@ -164,6 +164,17 @@ sub _open {
 				f_file => $slurp_file,
 				escape_char => '\\',
 				sep_char => $sep_char,
+				auto_diag => 1,
+				# Don't do this, it causes "Attempt to free unreferenced scalar"
+				# callbacks => {
+					# after_parse => sub {
+						# my ($csv, @row) = @_;
+						# if($row[0] =~ /^#/) {
+							# $row[0] = undef;
+							# # return \'skip';
+						# }
+					# }
+				# },
 			);
 
 			$dbh->{csv_tables}->{$table} = \%options;
@@ -191,7 +202,7 @@ sub _open {
 			)};
 
 			# Ignore blank lines or lines starting with # in the CSV file
-			@data = grep { $_->{'entry'} !~ /^#/ } grep { defined($_->{'entry'}) } @data;
+			@data = grep { $_->{'entry'} !~ /^\s*#/ } grep { defined($_->{'entry'}) } @data;
 			# $self->{'data'} = @data;
 			my $i = 0;
 			$self->{'data'} = ();
@@ -246,7 +257,7 @@ sub selectall_hash {
 	# if((scalar(keys %args) == 1) && $self->{'data'} && defined($args{'entry'})) {
 	# }
 
-	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL";
+	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	my @args;
 	foreach my $c1(sort keys(%args)) {	# sort so that the key is always the same
 		$query .= " AND $c1 LIKE ?";
@@ -295,7 +306,7 @@ sub fetchrow_hashref {
 
 	$self->_open() if(!$self->{$table});
 
-	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL";
+	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	my @args;
 	foreach my $c1(sort keys(%args)) {	# sort so that the key is always the same
 		$query .= " AND $c1 LIKE ?";
@@ -394,9 +405,9 @@ sub AUTOLOAD {
 
 	my $query;
 	if(wantarray && !delete($params{'distinct'})) {
-		$query = "SELECT $column FROM $table WHERE entry IS NOT NULL";
+		$query = "SELECT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	} else {
-		$query = "SELECT DISTINCT $column FROM $table WHERE entry IS NOT NULL";
+		$query = "SELECT DISTINCT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	}
 	my @args;
 	foreach my $c1(keys(%params)) {
