@@ -445,7 +445,7 @@ sub DESTROY {
 	my $self = shift;
 
 	if($self->{'temp'}) {
-		unlink $self->{'temp'};
+		unlink delete $self->{'temp'};
 	}
 }
 
