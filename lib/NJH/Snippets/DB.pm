@@ -143,7 +143,7 @@ sub _open {
 						csv_tables => {
 							$table => {
 								col_names => $args{'column_names'},
-							}
+							},
 						},
 					}
 				);
@@ -156,7 +156,7 @@ sub _open {
 				$self->{'logger'}->debug("read in $table from CSV $slurp_file");
 			}
 
-			my %options = (
+			$dbh->{csv_tables}->{$table} = {
 				allow_loose_quotes => 1,
 				blank_is_undef => 1,
 				empty_is_undef => 1,
@@ -168,16 +168,19 @@ sub _open {
 				# Don't do this, it causes "Attempt to free unreferenced scalar"
 				# callbacks => {
 					# after_parse => sub {
-						# my ($csv, @row) = @_;
-						# if($row[0] =~ /^#/) {
-							# $row[0] = undef;
-							# # return \'skip';
+						# my ($csv, @rows) = @_;
+						# my @rc;
+						# foreach my $row(@rows) {
+							# if($row->[0] !~ /^#/) {
+								# push @rc, $row;
+							# }
 						# }
+						# return @rc;
 					# }
-				# },
-			);
+				# }
+			};
 
-			$dbh->{csv_tables}->{$table} = \%options;
+			# $dbh->{csv_tables}->{$table} = \%options;
 			# delete $options{f_file};
 
 			# require Text::CSV::Slurp;
