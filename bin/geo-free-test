@@ -29,7 +29,7 @@ while(my $line = <$fin>) {
 sub run {
 	my $l = shift;
 
-	# return unless($l =~ /(Canada|US|USA|United States)$/i);
+	return unless($l =~ /(Canada|US|USA|United States|Australia)$/i);
 
 	eval {
 		if(!defined($g->geocode($l))) {
