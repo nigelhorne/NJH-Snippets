@@ -315,7 +315,8 @@ sub fetchrow_hashref {
 		$query .= " AND $c1 LIKE ?";
 		push @args, $args{$c1};
 	}
-	$query .= ' ORDER BY entry LIMIT 1';
+	# $query .= ' ORDER BY entry LIMIT 1';
+	$query .= ' LIMIT 1';
 	if($self->{'logger'}) {
 		if(defined($args[0])) {
 			$self->{'logger'}->debug("fetchrow_hashref $query: " . join(', ', @args));
@@ -330,7 +331,7 @@ sub fetchrow_hashref {
 			return $rc;
 		}
 	}
-	my $sth = $self->{$table}->prepare($query);
+	my $sth = $self->{$table}->prepare($query) or die $self->{$table}->errstr();
 	$sth->execute(@args) || throw Error::Simple("$query: @args");
 	if($c) {
 		my $rc = $sth->fetchrow_hashref();
