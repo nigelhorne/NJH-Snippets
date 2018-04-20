@@ -10,11 +10,11 @@ package NJH::Snippets::DB;
 #	must apply in writing for a licence for use from Nigel Horne at the
 #	above e-mail.
 
-# TODO: support a directory hierachy of databases
-
 # Abstract class giving read-only access to CSV, XML and SQLite databases
 
 # You can then access the files in $directory/foo.csv via this class:
+
+# TODO: support a directory hierachy of databases
 
 # package MyPackageName::DB::foo;
 
