@@ -300,20 +300,28 @@ sub selectall_hash {
 }
 
 # Returns a hash reference for one row in a table
+# Special argument: table: determines the table to read from if not the default,
+#	which is worked out from the class name
 sub fetchrow_hashref {
 	my $self = shift;
-	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
+	my %params = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
-	my $table = $self->{table} || ref($self);
+	my $table = $self->{'table'} || ref($self);
 	$table =~ s/.*:://;
 
 	$self->_open() if(!$self->{$table});
 
-	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+	my $query = 'SELECT * FROM ';
+	if(my $t = delete $params{'table'}) {
+		$query .= $t;
+	} else {
+		$query .= $table;
+	}
+	$query .= " WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	my @args;
-	foreach my $c1(sort keys(%args)) {	# sort so that the key is always the same
+	foreach my $c1(sort keys(%params)) {	# sort so that the key is always the same
 		$query .= " AND $c1 LIKE ?";
-		push @args, $args{$c1};
+		push @args, $params{$c1};
 	}
 	# $query .= ' ORDER BY entry LIMIT 1';
 	$query .= ' LIMIT 1';
