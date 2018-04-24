@@ -10,11 +10,9 @@ package NJH::Snippets::DB;
 #	must apply in writing for a licence for use from Nigel Horne at the
 #	above e-mail.
 
-# Abstract class giving read-only access to CSV, XML and SQLite databases
+# Abstract class giving read-only access to CSV, XML and SQLite databases via Perl without writing any SQL.
 
 # You can then access the files in $directory/foo.csv via this class:
-
-# TODO: support a directory hierachy of databases
 
 # package MyPackageName::DB::foo;
 
@@ -23,6 +21,14 @@ package NJH::Snippets::DB;
 # our @ISA = ('NJH::Snippets::DB');
 
 # 1;
+
+# You can then access the data using:
+# my $foo = NJH::Snippets::DB::foo->new();
+# my $row = $foo->fetchrow_hashref(customer_id => '12345);
+# print Data::Dumper->new([$row])->Dump();
+
+# TODO: support a directory hierachy of databases
+# TODO: consider returning an object or array of objects, rather than hashes
 
 use warnings;
 use strict;

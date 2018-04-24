@@ -2,11 +2,11 @@
 
 # SYNOPSIS
 
-Perl snippets used across many of my programs.
+Code snippets
 
 ## NJH::Snippets::DB
 
-Provides read-only access to databases.
+Abstract class giving read-only access to CSV, XML and SQLite databases via Perl without writing any SQL.
 Usually all that's neeeded to access a database called 'bar' is a class declaration such as this:
 
     package Foo::Bar;
@@ -23,9 +23,18 @@ and code such as this in the main program
 
     use Foo::Bar;
 
-    my $foo = Foo::Bar->new({ directory => "/var/lib/db/foo" });
+    my $foo = Foo::Bar->new(directory => "/var/lib/db/foo");
+    my $row = $foo->fetchrow_hashref(customer_id => '12345);
+    print Data::Dumper->new([$row])->Dump();
 
-    # TODO: add documentation on how to access the database
+## format
+
+Short C program to show the different formatting options with printf.
+
+
+## geo-free-test
+
+Use addresses in a Gedcom to generate addresses to test Geo::Coder::Free:
 
 # LICENSE AND COPYRIGHT
 
