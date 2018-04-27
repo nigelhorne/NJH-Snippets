@@ -12,7 +12,7 @@ package NJH::Snippets::DB;
 
 # Abstract class giving read-only access to CSV, XML and SQLite databases via Perl without writing any SQL.
 
-# You can then access the files in $directory/foo.csv via this class:
+# You can access the files in $directory/foo.csv via this class:
 
 # package MyPackageName::DB::foo;
 
