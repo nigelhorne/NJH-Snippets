@@ -1,6 +1,10 @@
 rm -rf *.bz2 *bundle
+
 for file in `lynx --dump https://dist.whosonfirst.org/bundles/ | fgrep https:// | fgrep venue- | fgrep latest | awk '{ print $2; }'`; do
 	# echo $file:
 	wget --no-check-certificate $file
+	wait
 	tar jxf `basename $file`&
 done
+
+wait
