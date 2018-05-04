@@ -119,6 +119,9 @@ sub _open {
 
 	my $dir = $self->{'directory'} || $directory;
 	my $slurp_file = File::Spec->catfile($dir, "$table.sql");
+	if($self->{'logger'}) {
+		$self->{'logger'}->debug("_open: try to open $slurp_file");
+	}
 
 	if(-r $slurp_file) {
 		$dbh = DBI->connect("dbi:SQLite:dbname=$slurp_file", undef, undef, {
