@@ -1,4 +1,13 @@
+#!/usr/bin/env bash
+
 rm -rf *.bz2 *bundle
+
+if [ x$WHOSONFIRST_HOME = 'x' ]; then
+	echo 'WHOSONFIRST_HOME is not set' 1>&2
+	exit 1
+fi
+
+cd $WHOSONFIRST_HOME || exit 1
 
 for file in `lynx --dump https://dist.whosonfirst.org/bundles/ | fgrep https:// | fgrep venue- | fgrep latest | awk '{ print $2; }'`; do
 	# echo $file:
