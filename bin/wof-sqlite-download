@@ -1,0 +1,10 @@
+rm -rf *.bz2 *.db
+
+for file in `lynx --dump https://dist.whosonfirst.org/sqlite/ | fgrep https:// | fgrep venue- | fgrep latest | awk '{ print $2; }'`; do
+	echo $file:
+	wget --no-check-certificate $file
+	wait
+	bunzip2 `basename $file`&
+done
+
+wait
