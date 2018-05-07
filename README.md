@@ -35,9 +35,13 @@ Short C program to show the different formatting options with printf.
 
 Use addresses in a Gedcom to generate addresses to test Geo::Coder::Free:
 
-## whosonfirst-download
+## wof-bundle-download
 
-Download and unback the latest files from https://dist.whosonfirst.org/bundles/
+Download and unpack the latest files from https://dist.whosonfirst.org/bundles/
+
+## wof-sqlite-download
+
+Download and unpack the latest files from https://dist.whosonfirst.org/sqlite/
 
 # LICENSE AND COPYRIGHT
 
