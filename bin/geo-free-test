@@ -35,9 +35,9 @@ sub run {
 		if(!defined($g->geocode($l))) {
 			print "$l failed\n";
 		}
-		# if(my $rc = $g->geocode($l)) {
-			# print "$l: ", $rc->{'latitude'}, '/', $rc->{'longitude'}, "\n";
-		# }
+		if(my $rc = $g->geocode($l)) {
+			print "$l: ", $rc->{'latitude'}, '/', $rc->{'longitude'}, "\n";
+		}
 	};
 	if($@) {
 		print "$l: $@";
