@@ -9,4 +9,8 @@ for file in `curl -s https://dist.whosonfirst.org/sqlite/ | fgrep venue- | fgrep
 	bunzip2 `basename $file`&
 done
 
+file=https://dist.whosonfirst.org/sqlite/whosonfirst-data-latest.db.bz2
+echo $file:
+wget --no-check-certificate $file
 wait
+bunzip2 `basename $file`
