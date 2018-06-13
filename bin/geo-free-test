@@ -15,7 +15,7 @@ die 'Set OPENADDR_HOME to enable testing' unless($ENV{'OPENADDR_HOME'});
 # my $g = Geo::Coder::Free::OpenAddresses->new(openaddr => $ENV{'OPENADDR_HOME'});
 my $g = Geo::Coder::Free->new(openaddr => $ENV{'OPENADDR_HOME'});
 
-open(my $fin, '-|', "./gedcom -T \"$ARGV[0]\"") or die;
+open(my $fin, '-|', "./gedcom -T \"$ARGV[0]\"");
 
 while(my $line = <$fin>) {
 	next if($line =~ /\d%/);
