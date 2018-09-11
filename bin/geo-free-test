@@ -20,26 +20,26 @@ open(my $fin, '-|', "./gedcom -T \"$ARGV[0]\"");
 while(my $line = <$fin>) {
 	next if($line =~ /\d%/);
 
-	$line =~ s/:\s.+$//;
-	$line =~ s/[\r\n]//;
+	my ($place, $people) = split(/:\s/, $line);
+	$people =~ s/[\r\n]//;
 
-	run($line);
+	run($place, $people);
 }
 
 sub run {
-	my $l = shift;
+	my ($place, $people) = @_;
 
-	return unless($l =~ /(Canada|US|USA|United States|Australia|England)$/i);
+	return unless($place =~ /(Canada|US|USA|United States|Australia|England)$/i);
 
 	eval {
-		if(!defined($g->geocode($l))) {
-			print "$l failed\n";
+		if(!defined($g->geocode($place))) {
+			print "$place failed\n\t$people\n";
 		}
-		if(my $rc = $g->geocode($l)) {
-			print "$l: ", $rc->{'latitude'}, '/', $rc->{'longitude'}, "\n";
+		if(my $rc = $g->geocode($place)) {
+			print "$place: ", $rc->{'latitude'}, '/', $rc->{'longitude'}, "\n";
 		}
 	};
 	if($@) {
-		print "$l: $@";
+		print "$place: $@";
 	}
 }
