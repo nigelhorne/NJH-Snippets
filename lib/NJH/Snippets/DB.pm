@@ -106,7 +106,7 @@ sub _open {
 		((ref($_[0]) eq 'HASH') ? %{$_[0]} : @_)
 	);
 
-	my $table = $self->{table} || ref($self);
+	my $table = $self->{'table'} || ref($self);
 	$table =~ s/.*:://;
 
 	if($self->{'logger'}) {
@@ -188,6 +188,16 @@ sub _open {
 					# }
 				# }
 			};
+
+			# my %options = (
+				# allow_loose_quotes => 1,
+				# blank_is_undef => 1,
+				# empty_is_undef => 1,
+				# binary => 1,
+				# f_file => $slurp_file,
+				# escape_char => '\\',
+				# sep_char => $sep_char,
+			# );
 
 			# $dbh->{csv_tables}->{$table} = \%options;
 			# delete $options{f_file};
