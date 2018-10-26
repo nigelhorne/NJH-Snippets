@@ -1,8 +1,9 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 # #!/usr/bin/perl -wT
 
 # Print the MX record for the given hostname
 
+use warnings;
 use strict;
 use autodie qw(:all);
 
