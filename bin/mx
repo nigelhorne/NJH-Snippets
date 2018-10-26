@@ -12,10 +12,10 @@ my @mx = mx($res, $ARGV[0]);
 
 foreach (@mx) {
 	print "preference = ", $_->preference, ' ';
-	my $ip = $_->exchange;
+	my $ip = $_->exchange();
 	print "exchange = $ip";
-	foreach ($res->search($ip)->answer) {
-		if($_->type eq 'A') { print ' ', $_->address };
+	foreach ($res->search($ip)->answer()) {
+		if($_->type() eq 'A') { print ' ', $_->address };
 	}
 	print "\n";
 }
