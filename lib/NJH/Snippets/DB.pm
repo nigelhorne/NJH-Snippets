@@ -318,10 +318,9 @@ sub selectall_hash {
 		}
 
 		return @rc;
-	} else {
-		$self->{'logger'}->warn("selectall_hash failure on  $query: @args");
-		throw Error::Simple("$query: @args");
 	}
+	$self->{'logger'}->warn("selectall_hash failure on  $query: @args");
+	throw Error::Simple("$query: @args");
 }
 
 # Returns a hash reference for one row in a table
