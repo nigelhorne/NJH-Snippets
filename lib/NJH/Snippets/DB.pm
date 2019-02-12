@@ -11,8 +11,12 @@ package NJH::Snippets::DB;
 #	above e-mail.
 
 # Abstract class giving read-only access to CSV, XML and SQLite databases via Perl without writing any SQL.
+# Look for databases in $directory in this order;
+#	SQLite (file ends with .sql)
+#	CSV (file ends with .csv or .db, can be gzipped)
+#	XML (file ends with .xml)
 
-# You can access the files in $directory/foo.csv via this class:
+# For example, you can access the files in /var/db/foo.csv via this class:
 
 # package MyPackageName::DB::foo;
 
@@ -23,7 +27,7 @@ package NJH::Snippets::DB;
 # 1;
 
 # You can then access the data using:
-# my $foo = NJH::Snippets::DB::foo->new();
+# my $foo = MyPackageName::DB::foo->new(directory => '/var/db');
 # my $row = $foo->fetchrow_hashref(customer_id => '12345);
 # print Data::Dumper->new([$row])->Dump();
 
@@ -98,6 +102,8 @@ sub set_logger {
 
 	$self->{'logger'} = $args{'logger'};
 }
+
+# Open the database.
 
 sub _open {
 	my $self = shift;
