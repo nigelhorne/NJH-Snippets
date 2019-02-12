@@ -2,7 +2,7 @@ rm -rf *.bz2 *.db
 
 # lynx gives cert errors
 # for file in `lynx --dump https://dist.whosonfirst.org/sqlite/ | fgrep https:// | fgrep venue- | fgrep latest | awk '{ print $2; }'`; do
-for file in `curl -s https://dist.whosonfirst.org/sqlite/ | fgrep venue- | fgrep latest.db.bz2 | egrep 'ca|us|au|gb' | awk '{gsub("<[^>]*>", "")}1' | awk '{ print "https://dist.whosonfirst.org/sqlite/"$1"" }'`; do
+for file in `curl -s https://dist.whosonfirst.org/sqlite/ | fgrep venue- | fgrep latest.db.bz2 | egrep 'ca-|us|au|gb' | awk '{gsub("<[^>]*>", "")}1' | awk '{ print "https://dist.whosonfirst.org/sqlite/"$1"" }'`; do
 	echo $file:
 	wget --no-check-certificate $file
 	wait
