@@ -263,7 +263,8 @@ sub _open {
 # Returns a reference to an array of hash references of all the data meeting
 # the given criteria
 sub selectall_hashref {
-	my @rc = selectall_hash(@_);
+	my $self = shift;
+	my @rc = $self->selectall_hash(@_);
 	return \@rc;
 }
 
