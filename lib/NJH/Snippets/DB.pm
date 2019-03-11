@@ -1,7 +1,7 @@
 package NJH::Snippets::DB;
 
 # Author Nigel Horne: njh@bandsman.co.uk
-# Copyright (C) 2015-2018, Nigel Horne
+# Copyright (C) 2015-2019, Nigel Horne
 
 # Usage is subject to licence terms.
 # The licence terms of this software are as follows:
@@ -271,39 +271,39 @@ sub selectall_hashref {
 # Returns an array of hash references
 sub selectall_hash {
 	my $self = shift;
-	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
+	my %params = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
 	my $table = $self->{table} || ref($self);
 	$table =~ s/.*:://;
 
 	$self->_open() if(!$self->{$table});
 
-	if((scalar(keys %args) == 0) && $self->{'data'}) {
+	if((scalar(keys %params) == 0) && $self->{'data'}) {
 		if($self->{'logger'}) {
 			$self->{'logger'}->trace("$table: selectall_hash fast track return");
 		}
 		return @{$self->{'data'}};
 	}
-	# if((scalar(keys %args) == 1) && $self->{'data'} && defined($args{'entry'})) {
+	# if((scalar(keys %params) == 1) && $self->{'data'} && defined($params{'entry'})) {
 	# }
 
 	my $query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
-	my @args;
-	foreach my $c1(sort keys(%args)) {	# sort so that the key is always the same
+	my @query_args;
+	foreach my $c1(sort keys(%params)) {	# sort so that the key is always the same
 		$query .= " AND $c1 LIKE ?";
-		push @args, $args{$c1};
+		push @query_args, $params{$c1};
 	}
 	$query .= ' ORDER BY entry';
 	if($self->{'logger'}) {
-		if(defined($args[0])) {
-			$self->{'logger'}->debug("selectall_hash $query: " . join(', ', @args));
+		if(defined($query_args[0])) {
+			$self->{'logger'}->debug("selectall_hash $query: " . join(', ', @query_args));
 		} else {
 			$self->{'logger'}->debug("selectall_hash $query");
 		}
 	}
 	my $key = $query;
-	if(defined($args[0])) {
-		$key .= ' ' . join(', ', @args);
+	if(defined($query_args[0])) {
+		$key .= ' ' . join(', ', @query_args);
 	}
 	my $c;
 	if($c = $self->{cache}) {
@@ -313,7 +313,7 @@ sub selectall_hash {
 	}
 
 	if(my $sth = $self->{$table}->prepare($query)) {
-		$sth->execute(@args) || throw Error::Simple("$query: @args");
+		$sth->execute(@query_args) || throw Error::Simple("$query: @query_args");
 
 		my @rc;
 		while(my $href = $sth->fetchrow_hashref()) {
@@ -326,8 +326,8 @@ sub selectall_hash {
 
 		return @rc;
 	}
-	$self->{'logger'}->warn("selectall_hash failure on $query: @args");
-	throw Error::Simple("$query: @args");
+	$self->{'logger'}->warn("selectall_hash failure on $query: @query_args");
+	throw Error::Simple("$query: @query_args");
 }
 
 # Returns a hash reference for one row in a table
