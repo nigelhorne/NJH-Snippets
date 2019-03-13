@@ -296,7 +296,7 @@ sub selectall_hash {
 	$query .= ' ORDER BY entry';
 	if($self->{'logger'}) {
 		if(defined($query_args[0])) {
-			$self->{'logger'}->debug("selectall_hash $query: " . join(', ', @query_args));
+			$self->{'logger'}->debug("selectall_hash $query: ", join(', ', @query_args));
 		} else {
 			$self->{'logger'}->debug("selectall_hash $query");
 		}
@@ -358,7 +358,7 @@ sub fetchrow_hashref {
 	$query .= ' LIMIT 1';
 	if($self->{'logger'}) {
 		if(defined($args[0])) {
-			$self->{'logger'}->debug("fetchrow_hashref $query: " . join(', ', @args));
+			$self->{'logger'}->debug("fetchrow_hashref $query: ", join(', ', @args));
 		} else {
 			$self->{'logger'}->debug("fetchrow_hashref $query");
 		}
@@ -469,7 +469,7 @@ sub AUTOLOAD {
 	}
 	if($self->{'logger'}) {
 		if(scalar(@args) && $args[0]) {
-			$self->{'logger'}->debug("AUTOLOAD $query: " . join(', ', @args));
+			$self->{'logger'}->debug("AUTOLOAD $query: ", join(', ', @args));
 		} else {
 			$self->{'logger'}->debug("AUTOLOAD $query");
 		}
