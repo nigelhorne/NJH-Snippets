@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use autodie qw(:all);
+use Module::CPANTS::Analyse;
+use Data::Dumper;
+
+my $rc = Module::CPANTS::Analyse->new({ dist => $ARGV[0] })->run();
+
+print Data::Dumper->new([$rc])->Dump();
