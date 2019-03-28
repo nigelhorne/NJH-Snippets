@@ -58,7 +58,7 @@ sub new {
 
 	my $class = ref($proto) || $proto;
 
-	if($class eq 'NJH::Snippets::DB') {
+	if($class eq __PACKAGE__) {
 		die "$class: abstract class";
 	}
 
