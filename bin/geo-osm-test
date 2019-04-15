@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# Use Geo::Coder::Free to see if the locations in a gedcom are known
+# Lookup locations in a Gedcom file on OpenStreetMap
 # Needs to be run in the same directory as the gedcom program resides
 
 use warnings;
