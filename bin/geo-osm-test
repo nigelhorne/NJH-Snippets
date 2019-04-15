@@ -1,0 +1,64 @@
+#!/usr/bin/env perl
+
+# Use Geo::Coder::Free to see if the locations in a gedcom are known
+# Needs to be run in the same directory as the gedcom program resides
+
+use warnings;
+use strict;
+use autodie qw(:all);
+
+use File::Spec;
+use HTTP::Cache::Transparent;
+use Geo::Coder::OSM;
+use LWP::UserAgent::Throttled;
+
+die "Usage: $0 gedcom-file" unless($ARGV[0]);
+die 'Set OPENADDR_HOME to enable testing' unless($ENV{'OPENADDR_HOME'});
+
+my $cachedir;
+if(my $e = $ENV{'CACHEDIR'}) {
+	$cachedir = File::Spec->catfile($e, 'http-cache-transparent');
+} else {
+	$cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache', 'http-cache-transparent');
+}
+HTTP::Cache::Transparent::init({
+	BasePath => $cachedir,
+	NoUpdate => 60 * 60 * 24,
+	MaxAge => 30 * 24
+}) || die "$0: $cachedir: $!";
+
+my $geocoder = Geo::Coder::OSM->new();
+
+my $browser = LWP::UserAgent::Throttled->new(agent => 'geo-osm-test', keep_alive => 1);
+$browser->env_proxy(1);
+$browser->conn_cache->total_capacity(undef);
+$browser->throttle('nominatim.openstreetmap.org' => 2);
+$geocoder->ua($browser);
+
+open(my $fin, '-|', "./gedcom -T \"$ARGV[0]\"");
+
+while(my $line = <$fin>) {
+	next if($line =~ /\d%/);
+
+	my ($place, $people) = split(/:\s/, $line);
+	$people =~ s/[\r\n]//;
+
+	run($place, $people);
+}
+
+sub run {
+	my ($place, $people) = @_;
+
+	return unless($place =~ /(Canada|US|USA|United States|Australia|England)$/i);
+
+	eval {
+		if(my $rc = $geocoder->geocode($place)) {
+			print "$place: ", $rc->{'lat'}, '/', $rc->{'lon'}, "\n";
+		} else {
+			print "$place failed\n\t$people\n";
+		}
+	};
+	if($@) {
+		print "$place: $@";
+	}
+}

@@ -32,11 +32,10 @@ sub run {
 	return unless($place =~ /(Canada|US|USA|United States|Australia|England)$/i);
 
 	eval {
-		if(!defined($g->geocode($place))) {
-			print "$place failed\n\t$people\n";
-		}
 		if(my $rc = $g->geocode($place)) {
 			print "$place: ", $rc->{'latitude'}, '/', $rc->{'longitude'}, "\n";
+		} else {
+			print "$place failed\n\t$people\n";
 		}
 	};
 	if($@) {
