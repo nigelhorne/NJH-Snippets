@@ -3,6 +3,11 @@
 # Print where photographs were taken by looking at the geotag
 #	and reverse geocoding them
 
+# TODO: Only works with JPEGs
+# Sometimes Image::MetaData::JPEG can't parse files,
+#	in those cases I reserve the right to say file a bug with the author
+#	of that code at https://metacpan.org/pod/Image::MetaData::JPEG
+
 use warnings;
 use strict;
 use autodie qw(:all);
