@@ -6,7 +6,7 @@ WORKDIR /root
 RUN apt update && \
 apt install --no-install-recommends -y cpanminus build-essential git make wget zlib1g-dev libperl-dev libssl-dev libexpat1-dev liblwp-protocol-https-perl libchi-perl libdbi-perl libarray-diff-perl libtest-kwalitee-perl libnet-whois-ip-perl libtest-deep-perl libclass-autouse-perl libtest-fatal-perl liblocale-subcountry-perl libdbd-sqlite3-perl libtest-simple-perl libtest-requiresinternet-perl libtext-csv-xs-perl libimage-metadata-jpeg-perl libtest-most-perl libgeo-coder-osm-perl libgeo-coder-googlev3-perl libtest-utf8-perl libscalar-list-utils-perl libhttp-browserdetect-perl libtest-carp-perl libtest-pod-perl libtest-timer-perl libdatetime-locale-perl libdata-validate-ip-perl libtest-lwp-useragent-perl libtest2-suite-perl libtest-number-delta-perl libtest-cleannamespaces-perl libio-aio-perl libpod-coverage-trustpod-perl liblog-log4perl-perl && \
 cpanm --configure-timeout=600 DBIx::TableLoader LWP::UserAgent::Throttled Locale::Object::Country CGI::Lingua IPC::System::Simple File::Fetch Geo::Coordinates::DecimalDegrees Geo::Coder::Bing Geo::Coder::CA Geo::Coder::Free \
-Geo::Coder::Google Geo::Coder::GooglePlaces Geo::Coder::Ovi Geo::Coder::Postcodes Geo::Coder::XYZ Geo::Coder::List && \
+Geo::Coder::Google Geo::Coder::GooglePlaces Geo::Coder::Postcodes Geo::Coder::XYZ Geo::Coder::List && \
 wget https://raw.githubusercontent.com/nigelhorne/NJH-Snippets/master/bin/geotag && \
 chmod +x ./geotag && \
 apt autoremove && apt autoclean && apt clean && \
