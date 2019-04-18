@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -e
+
+docker build -t geotag -f ./dockerfile .
+
+echo 'now run: docker run -v $(pwd):/tmp geotag /root/geotag /tmp/1.jpg /tmp/2.jpg'
+echo 'the first run may take some time, others will be fast'
