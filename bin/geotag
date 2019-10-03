@@ -12,6 +12,13 @@ use warnings;
 use strict;
 use autodie qw(:all);
 
+BEGIN {
+	eval 'use Geo::Coordinates::DecimalDegrees';
+	if($@) {
+		system('cpan -i Geo::Coordinates::DecimalDegrees');
+	}
+}
+
 use CHI;
 use File::Basename;
 use File::Spec;
