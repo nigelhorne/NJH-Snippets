@@ -468,15 +468,16 @@ sub AUTOLOAD {
 		$query = "SELECT DISTINCT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	}
 	my @args;
-	foreach my $c1(keys(%params)) {
-		if(!defined($params{$c1})) {
+	while(my ($key, $value) = each %params) {
+		if(defined($value)) {
+			# $query .= " AND $key LIKE ?";
+			$query .= " AND $key = ?";
+			push @args, $value;
+		} else {
 			if($self->{'logger'}) {
-				$self->{'logger'}->debug("AUTOLOAD params $c1 isn't defined");
+				$self->{'logger'}->debug("AUTOLOAD params $key isn't defined");
 			}
 		}
-		# $query .= " AND $c1 LIKE ?";
-		$query .= " AND $c1 = ?";
-		push @args, $params{$c1};
 	}
 	$query .= " ORDER BY $column";
 	if(!wantarray) {
