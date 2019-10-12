@@ -8,10 +8,12 @@ use strict;
 use autodie qw(:all);
 
 use Geo::Coder::Free;
+use Geo::Coder::Free::Local;
 
 die "Usage: $0 gedcom-file" unless($ARGV[0]);
 die 'Set OPENADDR_HOME to enable testing' unless($ENV{'OPENADDR_HOME'});
 
+my $l = Geo::Coder::Free::Local->new();
 # my $g = Geo::Coder::Free::OpenAddresses->new(openaddr => $ENV{'OPENADDR_HOME'});
 my $g = Geo::Coder::Free->new(openaddr => $ENV{'OPENADDR_HOME'});
 
@@ -32,8 +34,10 @@ sub run {
 	return unless($place =~ /(Canada|US|USA|United States|Australia|England)$/i);
 
 	eval {
-		if(my $rc = $g->geocode($place)) {
-			print "$place: ", $rc->{'latitude'}, '/', $rc->{'longitude'}, "\n";
+		if(my $rc = $l->geocode($place)) {
+			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
+		} elsif($rc = $g->geocode($place)) {
+			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
 		} else {
 			print "$place failed\n\t$people\n";
 		}
