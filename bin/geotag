@@ -15,7 +15,7 @@ use autodie qw(:all);
 BEGIN {
 	eval 'use Geo::Coordinates::DecimalDegrees';
 	if($@) {
-		system('cpan -i Geo::Coordinates::DecimalDegrees');
+		system('cpan -i Geo::Coordinates::DecimalDegrees CHI');
 	}
 }
 
