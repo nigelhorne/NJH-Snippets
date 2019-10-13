@@ -15,7 +15,8 @@ use autodie qw(:all);
 BEGIN {
 	eval 'use Geo::Coordinates::DecimalDegrees';
 	if($@) {
-		system('cpan -i Geo::Coordinates::DecimalDegrees CHI Geo::Coder::Bing Geo::Coder::CA Geo::Coder::List');
+		system('cpan -i Geo::Coordinates::DecimalDegrees CHI Geo::Coder::Bing Geo::Coder::CA Geo::Coder::List Geo::Coder::Free Geo::Coder::Google Geo::Coder::GooglePlaces');
+		system('cpan -i Gep::Coder::OSM Geo::Coder::Postcodes');
 	}
 }
 
