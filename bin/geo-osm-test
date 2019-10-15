@@ -41,6 +41,7 @@ while(my $line = <$fin>) {
 	next if($line =~ /\d%/);
 
 	my ($place, $people) = split(/:\s/, $line);
+	next unless($people);
 	$people =~ s/[\r\n]//;
 
 	run($place, $people);
@@ -53,7 +54,7 @@ sub run {
 
 	eval {
 		if(my $rc = $geocoder->geocode($place)) {
-			print "$place: ", $rc->{'lat'}, '/', $rc->{'lon'}, "\n";
+			# print "$place: ", $rc->{'lat'}, '/', $rc->{'lon'}, "\n";
 		} else {
 			print "$place failed\n\t$people\n";
 		}
