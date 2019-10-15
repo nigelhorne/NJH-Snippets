@@ -23,6 +23,7 @@ while(my $line = <$fin>) {
 	next if($line =~ /\d%/);
 
 	my ($place, $people) = split(/:\s/, $line);
+	next unless($people);
 	$people =~ s/[\r\n]//;
 
 	run($place, $people);
