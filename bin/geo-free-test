@@ -13,9 +13,9 @@ use Geo::Coder::Free::Local;
 die "Usage: $0 gedcom-file" unless($ARGV[0]);
 die 'Set OPENADDR_HOME to enable testing' unless($ENV{'OPENADDR_HOME'});
 
-my $l = Geo::Coder::Free::Local->new();
 # my $g = Geo::Coder::Free::OpenAddresses->new(openaddr => $ENV{'OPENADDR_HOME'});
 my $g = Geo::Coder::Free->new(openaddr => $ENV{'OPENADDR_HOME'});
+my $l = Geo::Coder::Free::Local->new();
 
 open(my $fin, '-|', "./gedcom -T \"$ARGV[0]\"");
 
