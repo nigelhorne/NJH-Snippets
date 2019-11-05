@@ -17,6 +17,8 @@ package NJH::Snippets::DB;
 #	CSV (file ends with .csv or .db, can be gzipped)
 #	XML (file ends with .xml)
 
+# TODO:	Add redis database - could be of use for Geo::Coder::Free
+
 # For example, you can access the files in /var/db/foo.csv via this class:
 
 # package MyPackageName::DB::foo;
