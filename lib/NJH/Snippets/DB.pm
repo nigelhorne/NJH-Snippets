@@ -17,8 +17,6 @@ package NJH::Snippets::DB;
 #	CSV (file ends with .csv or .db, can be gzipped)
 #	XML (file ends with .xml)
 
-# TODO:	Add redis database - could be of use for Geo::Coder::Free
-
 # For example, you can access the files in /var/db/foo.csv via this class:
 
 # package MyPackageName::DB::foo;
@@ -36,6 +34,9 @@ package NJH::Snippets::DB;
 
 # TODO: support a directory hierachy of databases
 # TODO: consider returning an object or array of objects, rather than hashes
+# TODO:	Add redis database - could be of use for Geo::Coder::Free
+#	use select() to select a database - use the table arg
+#	new(database => 'redis://servername');
 
 use warnings;
 use strict;
@@ -50,7 +51,7 @@ use DBD::SQLite::Constants qw/:file_open/;	# For SQLITE_OPEN_READONLY
 use Error::Simple;
 use Carp;
 
-our @databases;
+# our @databases;
 our $directory;
 our $logger;
 our $cache;
@@ -83,9 +84,9 @@ sub init {
 	$directory ||= $args{'directory'};
 	$logger ||= $args{'logger'};
 	$cache ||= $args{'cache'};
-	if($args{'databases'}) {
-		@databases = $args{'databases'};
-	}
+	# if($args{'databases'}) {
+		# @databases = $args{'databases'};
+	# }
 }
 
 sub set_logger {
@@ -262,7 +263,7 @@ sub _open {
 		}
 	}
 
-	push @databases, $table;
+	# push @databases, $table;
 
 	$self->{$table} = $dbh;
 	my @statb = stat($slurp_file);
