@@ -41,17 +41,14 @@ package NJH::Snippets::DB;
 use warnings;
 use strict;
 
+use DBD::SQLite::Constants qw/:file_open/;	# For SQLITE_OPEN_READONLY
 use File::Basename;
-use DBI;
 use File::Spec;
 use File::pfopen 0.02;
 use File::Temp;
-use Gzip::Faster;
-use DBD::SQLite::Constants qw/:file_open/;	# For SQLITE_OPEN_READONLY
 use Error::Simple;
 use Carp;
 
-# our @databases;
 our $directory;
 our $logger;
 our $cache;
@@ -84,9 +81,6 @@ sub init {
 	$directory ||= $args{'directory'};
 	$logger ||= $args{'logger'};
 	$cache ||= $args{'cache'};
-	# if($args{'databases'}) {
-		# @databases = $args{'databases'};
-	# }
 }
 
 sub set_logger {
@@ -134,6 +128,10 @@ sub _open {
 	}
 
 	if(-r $slurp_file) {
+		require DBI;
+
+		DBI->iport();
+
 		$dbh = DBI->connect("dbi:SQLite:dbname=$slurp_file", undef, undef, {
 			sqlite_open_flags => SQLITE_OPEN_READONLY,
 		});
@@ -146,6 +144,9 @@ sub _open {
 		my $fin;
 		($fin, $slurp_file) = File::pfopen::pfopen($dir, $table, 'csv.gz:db.gz');
 		if(defined($slurp_file) && (-r $slurp_file)) {
+			use Gzip::Faster;
+			Gzip::Faster->import();
+
 			close($fin);
 			$fin = File::Temp->new(SUFFIX => '.csv', UNLINK => 0);
 			print $fin gunzip_file($slurp_file);
@@ -262,8 +263,6 @@ sub _open {
 			}
 		}
 	}
-
-	# push @databases, $table;
 
 	$self->{$table} = $dbh;
 	my @statb = stat($slurp_file);
