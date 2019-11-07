@@ -130,7 +130,7 @@ sub _open {
 	if(-r $slurp_file) {
 		require DBI;
 
-		DBI->iport();
+		DBI->import();
 
 		$dbh = DBI->connect("dbi:SQLite:dbname=$slurp_file", undef, undef, {
 			sqlite_open_flags => SQLITE_OPEN_READONLY,
