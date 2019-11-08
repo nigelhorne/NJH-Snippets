@@ -144,7 +144,7 @@ sub _open {
 		my $fin;
 		($fin, $slurp_file) = File::pfopen::pfopen($dir, $table, 'csv.gz:db.gz');
 		if(defined($slurp_file) && (-r $slurp_file)) {
-			use Gzip::Faster;
+			require Gzip::Faster;
 			Gzip::Faster->import();
 
 			close($fin);
