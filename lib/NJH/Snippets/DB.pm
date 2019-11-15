@@ -371,9 +371,13 @@ sub fetchrow_hashref {
 	$query .= " WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	my @args;
 	foreach my $c1(sort keys(%params)) {	# sort so that the key is always the same
-		if($params{$c1}) {
-			$query .= " AND $c1 LIKE ?";
-			push @args, $params{$c1};
+		if(my $arg = $params{$c1}) {
+			if($arg =~ /\@/) {
+				$query .= " AND $c1 LIKE ?";
+			} else {
+				$query .= " AND $c1 = ?";
+			}
+			push @args, $arg;
 		}
 	}
 	# $query .= ' ORDER BY entry LIMIT 1';
