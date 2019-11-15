@@ -191,7 +191,11 @@ sub _open {
 				f_file => $slurp_file,
 				escape_char => '\\',
 				sep_char => $sep_char,
-				auto_diag => 1,
+				# Don't do this, causes "Bizarre copy of HASH
+				#	in scalar assignment in error_diag
+				#	RT121127
+				# auto_diag => 1,
+				auto_diag => 0,
 				# Don't do this, it causes "Attempt to free unreferenced scalar"
 				# callbacks => {
 					# after_parse => sub {
