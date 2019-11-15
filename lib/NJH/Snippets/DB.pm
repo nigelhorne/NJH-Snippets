@@ -346,7 +346,9 @@ sub selectall_hash {
 
 		return @rc;
 	}
-	$self->{'logger'}->warn("selectall_hash failure on $query: @query_args");
+	if($self->{'logger'}) {
+		$self->{'logger'}->warn("selectall_hash failure on $query: @query_args");
+	}
 	throw Error::Simple("$query: @query_args");
 }
 
