@@ -352,7 +352,11 @@ sub selectall_hash {
 	my $c;
 	if($c = $self->{cache}) {
 		if(my $rc = $c->get($key)) {
-			return @{$rc};
+			# This use of a temporary variable is to avoid
+			#	"Implicit scalar context for array in return"
+			# return @{$rc};
+			my @rc = @{$rc};
+			return @rc;
 		}
 	}
 
