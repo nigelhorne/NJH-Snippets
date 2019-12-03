@@ -23,6 +23,9 @@ jobs:
       - name: Install Dependencies
         run: |
           cpanm -iqn DBD::SQLite File::Basename File::Spec File::pfopen
-          cpanm -iqn File::Temp Error::Simple Carp
+          cpanm -iqn File::Temp Error::Simple Carp B::Lint warnings::unused
       - name: Run Tests
-        run: perl -c lib/NJH/Snippets/DB.pm
+        run: |
+          perl -c lib/NJH/Snippets/DB.pm
+          perl -c -MO=Lint lib/NJH/Snippets/DB.pm
+          perl -c -Mwarnings::unused lib/NJH/Snippets/DB.pm
