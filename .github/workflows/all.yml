@@ -20,5 +20,9 @@ jobs:
         with:
           perl-version: ${{ matrix.perl }}
       - run: perl -V
+      - name: Install Dependencies
+        run: |
+          cpanm -iqn DBD::SQLite File::Basename File::Spec File::pfopen
+          cpanm -iqn File::Temp Error::Simple Carp
       - name: Run Tests
         run: perl -c lib/NJH/Snippets/DB.pm
