@@ -5,15 +5,16 @@ use warnings;
 use Geo::Coder::OSM;
 use Data::Dumper;
 
-# my $place = '87 Roland Avenue, Coventry, Warwickshire, England';
-# my $place = '95 Halfway Road, Minster, Sheppey, Kent, England';
-# my $place = 'Ss Cosmus and Damian, Blean, Kent, England';
-my $place = 'St Nicholas Church, New Romney, Kent, England';
-
 my %location_mappings = (
 	'Coventry, Warwickshire, England' => 'Coventry, England',
 	'Minster, Sheppey, Kent' => 'Minster, Swale, Kent'
 );
+
+if(scalar(@ARGV) == 0) {
+	die "Usage: $0 location";
+}
+
+my $place = join(' ', @ARGV);
 
 while(my($key, $value) = each %location_mappings) {
 	# warn $map;
@@ -24,7 +25,6 @@ while(my($key, $value) = each %location_mappings) {
 	}
 }
 
-my $geocoder = Geo::Coder::OSM->new();
-my @rc = $geocoder->geocode(location => $place);
+my @rc = Geo::Coder::OSM->new()->geocode(location => $place);
 
 print Data::Dumper->new([\@rc])->Dump();
