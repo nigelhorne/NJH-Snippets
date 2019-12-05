@@ -301,6 +301,7 @@ sub selectall_hash {
 		}
 		# This use of a temporary variable is to avoid
 		#	"Implicit scalar context for array in return"
+		# return @{$self->{'data'}};
 		my @rc = @{$self->{'data'}};
 		return @rc;
 	}
@@ -321,6 +322,9 @@ sub selectall_hash {
 				$self->{'logger'}->fatal("selectall_hash $query: argument is not a string");
 			}
 			throw Error::Simple("$query: argument is not a string");
+		}
+		if(!defined($arg)) {
+			throw Error::Simple("$query: value for $c1 is no defined");
 		}
 		if(scalar(@query_args) || ($self->{'type'} eq 'CSV')) {
 			if($arg =~ /\@/) {
@@ -521,15 +525,27 @@ sub AUTOLOAD {
 
 	my $query;
 	if(wantarray && !delete($params{'distinct'})) {
-		$query = "SELECT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+		if($self->{'type'} eq 'CSV') {
+			$query = "SELECT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+		} else {
+			$query = "SELECT $column FROM $table";
+		}
 	} else {
-		$query = "SELECT DISTINCT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+		if($self->{'type'} eq 'CSV') {
+			$query = "SELECT DISTINCT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+		} else {
+			$query = "SELECT DISTINCT $column FROM $table";
+		}
 	}
 	my @args;
 	while(my ($key, $value) = each %params) {
 		if(defined($value)) {
 			# $query .= " AND $key LIKE ?";
-			$query .= " AND $key = ?";
+			if(scalar(@args)) {
+				$query .= " AND $key = ?";
+			} else {
+				$query .= " WHERE $key = ?";
+			}
 			push @args, $value;
 		} else {
 			if($self->{'logger'}) {
