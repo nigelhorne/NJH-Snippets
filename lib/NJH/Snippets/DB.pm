@@ -32,7 +32,13 @@ package NJH::Snippets::DB;
 # my $row = $foo->fetchrow_hashref(customer_id => '12345);
 # print Data::Dumper->new([$row])->Dump();
 
-# FIXME:  there needs to be a column called 'entry' which is used for sort
+# CSV files can have empty lines of comment lines starting with '#', to make them more readable
+
+# If the table has a column called "entry", sorts are based on that
+# To turn that off, pass 'no_entry' to the constructor, for legacy
+# reasons it's enabled by default
+# TODO: Switch that to off by default, and enable by passing 'entry'
+
 # TODO: support a directory hierachy of databases
 # TODO: consider returning an object or array of objects, rather than hashes
 # TODO:	Add redis database - could be of use for Geo::Coder::Free
@@ -71,7 +77,8 @@ sub new {
 		logger => $args{'logger'} || $logger,
 		directory => $args{'directory'} || $directory,	# The directory conainting the tables in XML, SQLite or CSV format
 		cache => $args{'cache'} || $cache,
-		table => $args{'table'}	# The name of the file containing the table, defaults to the class name
+		table => $args{'table'},	# The name of the file containing the table, defaults to the class name
+		no_entry => $args{'no_entry'} || 0,
 	}, $class;
 }
 
@@ -248,7 +255,9 @@ sub _open {
 			)};
 
 			# Ignore blank lines or lines starting with # in the CSV file
-			@data = grep { $_->{'entry'} !~ /^\s*#/ } grep { defined($_->{'entry'}) } @data;
+			unless($self->{no_entry}) {
+				@data = grep { $_->{'entry'} !~ /^\s*#/ } grep { defined($_->{'entry'}) } @data;
+			}
 			# $self->{'data'} = @data;
 			my $i = 0;
 			$self->{'data'} = ();
@@ -309,7 +318,7 @@ sub selectall_hash {
 	# }
 
 	my $query;
-	if($self->{'type'} eq 'CSV') {
+	if(($self->{'type'} eq 'CSV') && !$self->{no_entry}) {
 		$query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	} else {
 		$query = "SELECT * FROM $table";
@@ -341,7 +350,9 @@ sub selectall_hash {
 		}
 		push @query_args, $arg;
 	}
-	$query .= ' ORDER BY entry';
+	if($self->{no_entry}) {
+		$query .= ' ORDER BY entry';
+	}
 	if($self->{'logger'}) {
 		if(defined($query_args[0])) {
 			$self->{'logger'}->debug("selectall_hash $query: ", join(', ', @query_args));
@@ -403,7 +414,7 @@ sub fetchrow_hashref {
 	} else {
 		$query .= $table;
 	}
-	if($self->{'type'} eq 'CSV') {
+	if(($self->{'type'} eq 'CSV') && !$self->{no_entry}) {
 		$query .= " WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 	}
 	my @query_args;
@@ -525,13 +536,13 @@ sub AUTOLOAD {
 
 	my $query;
 	if(wantarray && !delete($params{'distinct'})) {
-		if($self->{'type'} eq 'CSV') {
+		if(($self->{'type'} eq 'CSV') && !$self->{no_entry}) {
 			$query = "SELECT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 		} else {
 			$query = "SELECT $column FROM $table";
 		}
 	} else {
-		if($self->{'type'} eq 'CSV') {
+		if(($self->{'type'} eq 'CSV') && !$self->{no_entry}) {
 			$query = "SELECT DISTINCT $column FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
 		} else {
 			$query = "SELECT DISTINCT $column FROM $table";
