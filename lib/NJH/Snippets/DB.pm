@@ -350,7 +350,7 @@ sub selectall_hash {
 		}
 		push @query_args, $arg;
 	}
-	if($self->{no_entry}) {
+	if(!$self->{no_entry}) {
 		$query .= ' ORDER BY entry';
 	}
 	if($self->{'logger'}) {
