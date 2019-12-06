@@ -318,8 +318,10 @@ sub selectall_hash {
 	# }
 
 	my $query;
+	my $done_where = 0;
 	if(($self->{'type'} eq 'CSV') && !$self->{no_entry}) {
 		$query = "SELECT * FROM $table WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+		$done_where = 1;
 	} else {
 		$query = "SELECT * FROM $table";
 	}
@@ -333,9 +335,9 @@ sub selectall_hash {
 			throw Error::Simple("$query: argument is not a string");
 		}
 		if(!defined($arg)) {
-			throw Error::Simple("$query: value for $c1 is no defined");
+			throw Error::Simple("$query: value for $c1 is not defined");
 		}
-		if(scalar(@query_args) || ($self->{'type'} eq 'CSV')) {
+		if($done_where) {
 			if($arg =~ /\@/) {
 				$query .= " AND $c1 LIKE ?";
 			} else {
@@ -347,6 +349,7 @@ sub selectall_hash {
 			} else {
 				$query .= " WHERE $c1 = ?";
 			}
+			$done_where = 1;
 		}
 		push @query_args, $arg;
 	}
@@ -414,13 +417,15 @@ sub fetchrow_hashref {
 	} else {
 		$query .= $table;
 	}
+	my $done_where = 0;
 	if(($self->{'type'} eq 'CSV') && !$self->{no_entry}) {
 		$query .= " WHERE entry IS NOT NULL AND entry NOT LIKE '#%'";
+		$done_where = 1;
 	}
 	my @query_args;
 	foreach my $c1(sort keys(%params)) {	# sort so that the key is always the same
 		if(my $arg = $params{$c1}) {
-			if(scalar(@query_args) || ($self->{'type'} eq 'CSV')) {
+			if($done_where) {
 				if($arg =~ /\@/) {
 					$query .= " AND $c1 LIKE ?";
 				} else {
@@ -432,6 +437,7 @@ sub fetchrow_hashref {
 				} else {
 					$query .= " WHERE $c1 = ?";
 				}
+				$done_where = 1;
 			}
 			push @query_args, $arg;
 		}
