@@ -1,0 +1,64 @@
+#!/usr/bin/perl -ws
+
+# Remove duplicate entries from environmet variables
+
+# Add this to ~/.bash_profile:
+#	eval `removedups MANPATH LD_LIBRARY_PATH PATH`
+
+while (@ARGV) {
+	if(defined ($ENV{$ARGV[0]})) {
+		my @dedup;
+		my $i = 0;
+		my $addedempty = 0;
+
+		foreach(split(/:/, $ENV{$ARGV[0]}, -1)) {
+			if($i eq 0) {
+				$dedup[$i++] = $_;
+			} else {
+				if($_ eq "") {
+					if($addedempty eq 0) {
+						$addedempty = 1;
+						$dedup[$i++] = "(null)";
+					}
+				} else {
+					my $found = 0;
+
+					foreach my $elem (@dedup) {
+						if($elem eq $_) {
+							$found = 1;
+							last;
+						}
+					}
+					if($found eq 0) {
+						$dedup[$i++] = $_;
+					}
+				}
+			}
+		}
+
+		print $ARGV[0] . '="';
+
+		if(scalar(@dedup)) {
+			my $first = 1;
+
+			foreach my $elem (@dedup) {
+				if($first eq 0) {
+					print ':';
+				} else {
+					$first = 0;
+				}
+				if($elem ne "(null)") {
+					print $elem;
+				}
+			}
+
+			if($dedup[$#dedup] eq "(null)") {
+				print ':';
+			}
+		}
+
+		print "\"\n";
+	}
+
+	shift (@ARGV);
+}
