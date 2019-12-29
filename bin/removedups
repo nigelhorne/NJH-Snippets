@@ -12,11 +12,11 @@ while (@ARGV) {
 		my $addedempty = 0;
 
 		foreach(split(/:/, $ENV{$ARGV[0]}, -1)) {
-			if($i eq 0) {
+			if($i == 0) {
 				$dedup[$i++] = $_;
 			} else {
 				if($_ eq "") {
-					if($addedempty eq 0) {
+					if($addedempty == 0) {
 						$addedempty = 1;
 						$dedup[$i++] = "(null)";
 					}
@@ -29,7 +29,7 @@ while (@ARGV) {
 							last;
 						}
 					}
-					if($found eq 0) {
+					if($found == 0) {
 						$dedup[$i++] = $_;
 					}
 				}
@@ -42,7 +42,7 @@ while (@ARGV) {
 			my $first = 1;
 
 			foreach my $elem (@dedup) {
-				if($first eq 0) {
+				if($first == 0) {
 					print ':';
 				} else {
 					$first = 0;
