@@ -1,0 +1,84 @@
+#!/usr/bin/env perl
+
+# Print my CPAN test failures in the last day
+
+use warnings;
+use strict;
+use autodie qw(:all);
+use Data::Dumper;
+
+no lib '.';
+
+my @modules;
+
+# Install Pre-requisites
+BEGIN {
+	@modules = (
+		'DateTime', 'Date::Parse',
+		'File::Spec', 'HTTP::Cache::Transparent',
+		'LWP::Simple', 'XML::Hash',
+	);
+
+	my @needfull;
+	foreach my $module(@modules) {
+		eval "use $module";
+		if($@) {
+			push @needfull, $module;
+		}
+	}
+	if(scalar(@needfull)) {
+		my $list = join(' ', @needfull);
+		print "Installing $list\n";
+		system("cpan -i $list");
+	}
+}
+
+my $cachedir;
+if(my $e = $ENV{'CACHEDIR'}) {
+	$cachedir = File::Spec->catfile($e, 'http-cache-transparent');
+} else {
+	$cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache', 'http-cache-transparent');
+}
+
+if(!-d $cachedir) {
+	mkdir $cachedir || die "$cachedir: $!";
+}
+
+HTTP::Cache::Transparent::init({
+	BasePath => $cachedir,
+	Verbose => 0,
+	NoUpdate => 24 * 60 * 60,
+});
+
+foreach my $module(@modules) {
+	my $version;
+	if($module =~ /(.+)\s(.+)$/) {
+		$module = $1;
+		$version = $2;
+	}
+	if($module =~ /.+\/(.+)/) {
+		$module = $1;
+	}
+	eval "require $module";
+	if($@) {
+		die $@;
+	}
+	$module->import();
+	# if($version && ($module::VERSION < $version)) {
+		# die "$module: need $version got ", $module::VERSIOn;
+	# }
+}
+
+my $content = get('http://cpantesters.org/author/N/NHORNE-nopass.rss');
+die if(!defined($content));
+
+my $now = DateTime->now();
+
+for my $item(@{XML::Hash->new()->fromXMLStringtoHash($content)->{'rss'}->{'channel'}->{'item'}}) {
+	my $pubdate = str2time($item->{'pubDate'}->{'text'});
+
+	my $ago = $now->epoch() - $pubdate;
+	if($ago <= 24 * 60 * 60) {
+		print "$ago seconds ago:\n\t", $item->{'title'}->{'text'}, ': ', $item->{'link'}->{'text'}, "\n";
+	}
+}
