@@ -7,14 +7,17 @@ use warnings;
 use strict;
 use autodie qw(:all);
 
+use Getopt::Std;
 use Geo::Coder::Free;
 use Geo::Coder::Free::Local;
 
-die "Usage: $0 gedcom-file" unless($ARGV[0]);
+die "Usage: $0 [ -v ] gedcom-file" unless($ARGV[0]);
 die 'Set OPENADDR_HOME to enable testing' unless($ENV{'OPENADDR_HOME'});
 
-# Geo::Coder::Free::DB::init(logger => MyLogger->new());
-# my $g = Geo::Coder::Free::OpenAddresses->new(openaddr => $ENV{'OPENADDR_HOME'});
+my %opts;
+getopts('v', \%opts);
+Geo::Coder::Free::DB::init(logger => MyLogger->new()) if($opts{'v'});
+
 my $g = Geo::Coder::Free->new();
 my $o = Geo::Coder::Free::OpenAddresses->new(openaddr => $ENV{'OPENADDR_HOME'});
 my $l = Geo::Coder::Free::Local->new();
@@ -40,11 +43,11 @@ sub run {
 		if(my $rc = $l->geocode($place)) {
 			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
 		} elsif($rc = $g->geocode($place)) {
-			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
-		} elsif($rc = $o->geocode($place)) {
-			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
+			print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
+		# } elsif($rc = $o->geocode($place)) {
+			print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
 		} else {
-			print "$place failed\n\t$people\n";
+			# # print "$place failed\n\t$people\n";
 		}
 	};
 	if($@) {
