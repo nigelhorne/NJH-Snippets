@@ -13,8 +13,10 @@ use Geo::Coder::Free::Local;
 die "Usage: $0 gedcom-file" unless($ARGV[0]);
 die 'Set OPENADDR_HOME to enable testing' unless($ENV{'OPENADDR_HOME'});
 
+# Geo::Coder::Free::DB::init(logger => MyLogger->new());
 # my $g = Geo::Coder::Free::OpenAddresses->new(openaddr => $ENV{'OPENADDR_HOME'});
-my $g = Geo::Coder::Free->new(openaddr => $ENV{'OPENADDR_HOME'});
+my $g = Geo::Coder::Free->new();
+my $o = Geo::Coder::Free::OpenAddresses->new(openaddr => $ENV{'OPENADDR_HOME'});
 my $l = Geo::Coder::Free::Local->new();
 
 open(my $fin, '-|', "./gedcom -T \"$ARGV[0]\"");
@@ -24,7 +26,7 @@ while(my $line = <$fin>) {
 
 	my ($place, $people) = split(/:\s/, $line);
 	next unless($people);
-	$people =~ s/[\r\n]//;
+	chomp $people;
 
 	run($place, $people);
 }
@@ -39,6 +41,8 @@ sub run {
 			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
 		} elsif($rc = $g->geocode($place)) {
 			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
+		} elsif($rc = $o->geocode($place)) {
+			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
 		} else {
 			print "$place failed\n\t$people\n";
 		}
@@ -47,3 +51,38 @@ sub run {
 		print "$place: $@";
 	}
 }
+
+package MyLogger;
+
+sub new {
+	my ($proto, %args) = @_;
+
+	my $class = ref($proto) || $proto;
+
+	return bless { }, $class;
+}
+
+sub trace {
+	debug(@_);
+}
+
+sub warn {
+	debug(@_);
+}
+
+sub debug {
+	my $self = shift;
+
+	print @_, "\n";
+}
+
+sub AUTOLOAD {
+	our $AUTOLOAD;
+	my $param = $AUTOLOAD;
+
+	unless($param eq 'MyLogger::DESTROY') {
+		die "Need to define $param\n";
+	}
+}
+
+1;
