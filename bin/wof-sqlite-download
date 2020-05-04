@@ -1,16 +1,17 @@
 rm -rf *.bz2 *.db
 
-# lynx gives cert errors
-# for file in `lynx --dump https://dist.whosonfirst.org/sqlite/ | fgrep https:// | fgrep venue- | fgrep latest | awk '{ print $2; }'`; do
-for file in `curl -s https://dist.whosonfirst.org/sqlite/ | fgrep venue- | fgrep latest.db.bz2 | egrep 'ca-latest|us|au|gb' | awk '{gsub("<[^>]*>", "")}1' | awk '{ print "https://dist.whosonfirst.org/sqlite/"$1"" }'`; do
+# SITE=https://dist.whosonfirst.org/sqlite/
+SITE=https://data.geocode.earth/wof/dist/sqlite/
+
+for file in `curl -s $SITE | fgrep venue- | fgrep latest.db.bz2 | egrep 'ca-latest|us|au|gb' | awk '{gsub("<[^>]*>", "")}1' | awk "{ print \"$SITE/\"$1\"\" }"`; do
 	echo $file:
 	wget --no-check-certificate $file
 	wait
-	bunzip2 `basename $file`&
+	bunzip2 `basename $file`
 done
 
-file=https://dist.whosonfirst.org/sqlite/whosonfirst-data-latest.db.bz2
-echo $file:
-wget --no-check-certificate $file
+FILE=$SITE/whosonfirst-data-latest.db.bz2
+echo $FILE:
+wget --no-check-certificate $FILE
 wait
-bunzip2 `basename $file`
+bunzip2 `basename $FILE`
