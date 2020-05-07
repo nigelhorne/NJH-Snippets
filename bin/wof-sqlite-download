@@ -1,6 +1,6 @@
 rm -rf *.bz2 *.db
 
-# SITE=https://dist.whosonfirst.org/sqlite/
+SITE=https://dist.whosonfirst.org/sqlite/
 SITE=https://data.geocode.earth/wof/dist/sqlite/
 
 for file in `curl -s $SITE | fgrep venue- | fgrep latest.db.bz2 | egrep 'ca-latest|us|au|gb' | awk '{gsub("<[^>]*>", "")}1' | awk "{ print \"$SITE/\"$1\"\" }"`; do
