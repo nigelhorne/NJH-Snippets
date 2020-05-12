@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+# cd $WHOSONFIRST && ./wof-update
+
+set -e
+
+for i in $WHOSONFIRST_HOME/whosonfirst-data-*; do
+	echo $i:
+	cd $i
+	git pull
+done
