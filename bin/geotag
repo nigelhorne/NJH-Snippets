@@ -62,7 +62,7 @@ sub doit {
 		if($latNS eq 'S') {
 			$latitude *= -1;
 		}
-		print $file, ": $latitude,";
+		print "$file: $latitude,";
 
 		$degrees = $long[0] / $long[1];
 		if($longEW eq 'W') {
