@@ -43,11 +43,11 @@ sub run {
 		if(my $rc = $l->geocode($place)) {
 			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
 		} elsif($rc = $g->geocode($place)) {
-			print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
-		# } elsif($rc = $o->geocode($place)) {
-			print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
+			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
+		} elsif($rc = $o->geocode($place)) {
+			# print "$place: ", $rc->lat(), '/', $rc->long(), "\n";
 		} else {
-			# # print "$place failed\n\t$people\n";
+			print "$place failed\n\t$people\n";
 		}
 	};
 	if($@) {
