@@ -336,7 +336,9 @@ sub selectall_hash {
 			throw Error::Simple("$query: argument is not a string");
 		}
 		if(!defined($arg)) {
-			throw Error::Simple("$query: value for $c1 is not defined");
+			my @call_details = caller(0);
+			throw Error::Simple("$query: value for $c1 is not defined in call from " .
+				$call_details[2] . ' of ' . $call_details[1]);
 		}
 		if($done_where) {
 			if($arg =~ /\@/) {
@@ -447,7 +449,9 @@ sub fetchrow_hashref {
 	$query .= ' LIMIT 1';
 	if($self->{'logger'}) {
 		if(defined($query_args[0])) {
-			$self->{'logger'}->debug("fetchrow_hashref $query: ", join(', ', @query_args));
+			my @call_details = caller(0);
+			$self->{'logger'}->debug("fetchrow_hashref $query: ", join(', ', @query_args),
+				' called from ', $call_details[2] . ' of ' . $call_details[1]);
 		} else {
 			$self->{'logger'}->debug("fetchrow_hashref $query");
 		}
