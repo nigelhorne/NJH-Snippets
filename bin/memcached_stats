@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 
+# Usage: $0 localhost:11211
+
 use warnings;
 use strict;
 use Cache::Memcached;
