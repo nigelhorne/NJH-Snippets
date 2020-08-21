@@ -1,14 +1,13 @@
 #!/usr/bin/env perl
 
 # Usage: $0 localhost:11211
+# echo "stats detail on" | nc localhost 11211
 
 use warnings;
 use strict;
 use Cache::Memcached;
 # use CHI;
 use Data::Dumper;
-
-# echo "stats detail on" | nc localhost 11211
 
 my $memc = Cache::Memcached->new();
 $memc->set_servers(\@ARGV);
