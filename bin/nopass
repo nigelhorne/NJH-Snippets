@@ -9,17 +9,16 @@ use Data::Dumper;
 
 no lib '.';
 
-my @modules;
+my @needfull;
 
 # Install Pre-requisites
 BEGIN {
-	@modules = (
+	my @modules = (
 		'DateTime', 'Date::Parse',
 		'File::Spec', 'HTTP::Cache::Transparent',
 		'LWP::Simple', 'XML::Hash',
 	);
 
-	my @needfull;
 	foreach my $module(@modules) {
 		eval "use $module";
 		if($@) {
@@ -33,24 +32,7 @@ BEGIN {
 	}
 }
 
-my $cachedir;
-if(my $e = $ENV{'CACHEDIR'}) {
-	$cachedir = File::Spec->catfile($e, 'http-cache-transparent');
-} else {
-	$cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache', 'http-cache-transparent');
-}
-
-if(!-d $cachedir) {
-	mkdir $cachedir || die "$cachedir: $!";
-}
-
-HTTP::Cache::Transparent::init({
-	BasePath => $cachedir,
-	Verbose => 0,
-	NoUpdate => 24 * 60 * 60,
-});
-
-foreach my $module(@modules) {
+foreach my $module(@needfull) {
 	my $version;
 	if($module =~ /(.+)\s(.+)$/) {
 		$module = $1;
@@ -68,6 +50,25 @@ foreach my $module(@modules) {
 		# die "$module: need $version got ", $module::VERSIOn;
 	# }
 }
+
+my $cachedir = $ENV{'CACHEDIR'};
+if(!defined($cachedir)) {
+	$cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache');
+}
+
+if(!-d $cachedir) {
+	mkdir $cachedir || die "$cachedir: $!";
+}
+$cachedir = File::Spec->catfile($cachedir, 'http-cache-transparent');
+if(!-d $cachedir) {
+	mkdir $cachedir || die "$cachedir: $!";
+}
+
+HTTP::Cache::Transparent::init({
+	BasePath => $cachedir,
+	Verbose => 0,
+	NoUpdate => 24 * 60 * 60,
+});
 
 my $content = get('http://cpantesters.org/author/N/NHORNE-nopass.rss');
 die if(!defined($content));

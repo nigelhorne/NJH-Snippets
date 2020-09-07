@@ -1,0 +1,23 @@
+#!/usr/bin/env perl
+
+# Usage: $0 localhost:11211
+# echo "stats detail on" | nc localhost 11211
+
+use warnings;
+use strict;
+use Cache::Memcached;
+# use CHI;
+use Data::Dumper;
+
+my $memc = Cache::Memcached->new();
+$memc->set_servers(\@ARGV);
+
+# print Dumper($memc->stats('detail dump'));
+# $stats =  Dumper($memc->stats('items'));
+foreach my $i(1..37) {
+	print Dumper($memc->stats("cachedump $i 0"));
+}
+
+# my $chi = CHI->new(driver => 'Memcached', servers => \@ARGV);
+# my $hash = $chi->dump_as_hash();
+# print Dumper($hash);
