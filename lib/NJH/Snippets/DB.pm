@@ -495,6 +495,8 @@ sub execute {
 		$args{'query'} = shift;
 	}
 
+	Carp::croak('Usage: execute(query => $query)') unless(defined($args{'query'}));
+
 	my $table = $self->{table} || ref($self);
 	$table =~ s/.*:://;
 
