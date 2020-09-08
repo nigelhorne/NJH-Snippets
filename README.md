@@ -41,6 +41,10 @@ Show where photographs were taken.
 It reads the GPS (geotag) information from a JPG and reverse geo-codes it to
 print the address.
 
+## tapechk
+
+Verify a tar or cpio archive written to a device such as a tape drive
+
 ## wof-bundle-download
 
 Download and unpack the latest files from https://dist.whosonfirst.org/bundles/
@@ -51,7 +55,7 @@ Download and unpack the latest files from https://dist.whosonfirst.org/sqlite/
 
 # LICENSE AND COPYRIGHT
 
-Copyright 2015-2019 Nigel Horne.
+Copyright 2015-2020 Nigel Horne.
 
 This program is released under the following licence: GPL2 for personal use on
 a single computer.

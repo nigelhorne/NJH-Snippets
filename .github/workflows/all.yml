@@ -26,6 +26,6 @@ jobs:
           cpanm -iqn File::Temp Error::Simple Carp B::Lint warnings::unused
       - name: Run Tests
         run: |
-          perl -c lib/NJH/Snippets/DB.pm
-          perl -c -MO=Lint lib/NJH/Snippets/DB.pm
-          perl -c -Mwarnings::unused lib/NJH/Snippets/DB.pm
+          perl -c -Ilib lib/NJH/Snippets/DB.pm
+          perl -c -Ilib -MO=Lint lib/NJH/Snippets/DB.pm
+          perl -c -Ilib -Mwarnings::unused lib/NJH/Snippets/DB.pm
