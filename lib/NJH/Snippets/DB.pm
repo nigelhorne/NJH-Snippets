@@ -83,7 +83,7 @@ sub new {
 	}, $class;
 }
 
-# Can also be run as a class level NJH::Snippets::DB::init(directory => '../databases')
+# Can also be run as a class level __PACKAGE__::DB::init(directory => '../databases')
 sub init {
 	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
