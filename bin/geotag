@@ -12,18 +12,55 @@ use warnings;
 use strict;
 use autodie qw(:all);
 
+my @needfull;
+
+# Install Pre-requisites
 BEGIN {
-	eval 'use Geo::Coordinates::DecimalDegrees';
-	if($@) {
-		system('cpan -i Geo::Coordinates::DecimalDegrees CHI Geo::Coder::Bing Geo::Coder::CA Geo::Coder::List Geo::Coder::Free Geo::Coder::Google Geo::Coder::GooglePlaces');
-		system('cpan -i Gep::Coder::OSM Geo::Coder::Postcodes Image::MetaData::JPEG');
+	my @modules = (
+		'CHI','File::Basename', 'File::Spec',
+		'Geo::Coordinates::DecimalDegrees', 'Image::MetaData::JPEG'
+	);
+	foreach my $module(@modules) {
+		eval "use $module";
+		if($@) {
+			push @needfull, $module;
+		}
 	}
+	if(scalar(@needfull)) {
+		my $list = join(' ', @needfull);
+		print "Installing $list\n";
+		system("cpan -i $list");
+	}
+
+	# FIXME
+	$SIG{__WARN__} = sub {
+		my $warning = shift;
+		if($warning =~ /^Use of uninitialized value/) {
+			die $warning;
+		}
+		warn $warning;
+	};
 }
 
-use CHI;
-use File::Basename;
-use File::Spec;
-use Geo::Coordinates::DecimalDegrees;
+foreach my $module(@needfull) {
+	my $version;
+	if($module =~ /(.+)\s(.+)$/) {
+		$module = $1;
+		$version = $2;
+	}
+	if($module =~ /.+\/(.+)/) {
+		$module = $1;
+	}
+	eval "require $module";
+	if($@) {
+		die $@;
+	}
+	$module->import();
+	# if($version && ($module::VERSION < $version)) {
+		# die "$module: need $version got ", $module::VERSION;
+	# }
+}
+
 use Geo::Coder::Bing;
 use Geo::Coder::CA;
 use Geo::Coder::List;
@@ -34,7 +71,6 @@ use Geo::Coder::GooglePlaces;
 use Geo::Coder::OSM;
 use Geo::Coder::Postcodes;
 use Geo::Coder::XYZ;
-use Image::MetaData::JPEG;
 use LWP::UserAgent::Throttled;
 
 my $cachedir;
