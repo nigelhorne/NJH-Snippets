@@ -1,0 +1,34 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use XML::LibXML::Reader;
+
+my $reader = XML::LibXML::Reader->new(location => '../lib/people.xml')
+	or die "cannot read file.xml\n";
+
+my $key;
+
+while($reader->read()) {
+	processNode($reader);
+}
+
+sub processNode {
+	my $reader = shift;
+	# printf "%d %d %s %d\n", ($reader->depth,
+		      # $reader->nodeType,
+		      # $reader->name,
+		      # # $reader->isEmptyElement);
+		      # $reader->hasValue);
+
+	# These constants are not exported by default :-(
+	if($reader->nodeType() == 1) {
+		$key = $reader->name();
+	} elsif($reader->nodeType() == 3) {
+		if($reader->hasValue()) {
+			print "$key=>", $reader->value(), "\n";
+		}
+	} elsif($reader->nodeType() == 15) {
+		$key = undef;
+	}
+}

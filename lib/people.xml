@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<table>
+	<opts>
+ <hashref memory_address="0x7f8073264528">
+  <item key="F">1</item>
+  <item key="c">1</item>
+  <item key="d">1</item>
+  <item key="h">Nigel Horne</item>
+  <item key="m">1</item>
+  <item key="w">1</item>
+ </hashref>
+</opts>
+
+	<person person_id="1">
+		<entry>I1</entry>
+		<title>Nigel</title>
+		<first_name>Nigel</first_name>
+		<surname>Horne</surname>
+		<home>1</home>
+		<alive>1</alive>
+		<bio>
+			<en>
+				The author of this software.
+			</en>
+		</bio>
+		<sex>M</sex>
+	</person>
+</table>
