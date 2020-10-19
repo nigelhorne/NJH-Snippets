@@ -7,6 +7,7 @@ use XML::LibXML::Reader;
 my $reader = XML::LibXML::Reader->new(location => '../lib/people.xml')
 	or die "cannot read file.xml\n";
 
+my $node;
 my $key;
 
 while($reader->read()) {
@@ -15,20 +16,29 @@ while($reader->read()) {
 
 sub processNode {
 	my $reader = shift;
-	# printf "%d %d %s %d\n", ($reader->depth,
-		      # $reader->nodeType,
-		      # $reader->name,
-		      # # $reader->isEmptyElement);
-		      # $reader->hasValue);
+	printf "%d %d %s %d %d\n", ($reader->depth,
+		      $reader->nodeType,
+		      $reader->name,
+		      # $reader->isEmptyElement);
+		      $reader->attributeCount(),
+		      $reader->hasValue);
 
 	# These constants are not exported by default :-(
 	if($reader->nodeType() == 1) {
-		$key = $reader->name();
+		$node = $reader->name();
+		if($reader->hasAttributes()) {
+			$key = $reader->getAttribute('key');
+		}
 	} elsif($reader->nodeType() == 3) {
 		if($reader->hasValue()) {
-			print "$key=>", $reader->value(), "\n";
+			print "$node";
+			if(defined($key)) {
+				print " ($key)";
+			}
+			print '=>', $reader->value(), "\n";
 		}
 	} elsif($reader->nodeType() == 15) {
 		$key = undef;
+		$node = undef;
 	}
 }

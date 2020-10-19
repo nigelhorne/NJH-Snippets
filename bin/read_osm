@@ -1,0 +1,74 @@
+#!/usr/bin/env perl
+
+# Print towns and cities latitutes a longitudes from an OSM file
+# e.g. https://download.geofabrik.de/europe-latest.osm.bz2
+
+# TODO, print places in the towns
+
+use strict;
+use warnings;
+use XML::LibXML::Reader;
+
+binmode(STDOUT, "encoding(UTF-8)");
+
+open(my $pin, '-|', 'bzcat ../../../../Downloads/europe-latest.osm.bz2');
+my $reader = XML::LibXML::Reader->new(FD => $pin)
+	or die "cannot read file.xml\n";
+
+my $in_node;
+my $node;
+my $key;
+my $name;
+my $is_in;
+my $lat;
+my $lon;
+
+while($reader->read()) {
+	processNode($reader);
+}
+
+sub processNode {
+	my $reader = shift;
+	# printf "%d %d %s %d %d\n", ($reader->depth,
+		      # $reader->nodeType,
+		      # $reader->name,
+		      # # $reader->isEmptyElement);
+		      # $reader->attributeCount(),
+		      # $reader->hasValue);
+
+	# These constants are not exported by default :-(
+	if($reader->nodeType() == 1) {
+		$node = $reader->name();
+		if($node eq 'node') {
+			if($reader->hasAttributes()) {
+				$lat = $reader->getAttribute('lat');
+				$lon = $reader->getAttribute('lon');
+				$in_node = 1;
+			}
+		} elsif($in_node) {
+			if($node eq 'tag') {
+				if($reader->hasAttributes()) {
+					my $key = $reader->getAttribute('k');
+					# print "$key\n";
+					if($key eq 'name:en') {
+						$name = $reader->getAttribute('v');
+						# print "$name\n";
+					} elsif($key eq 'is_in') {
+						$is_in = $reader->getAttribute('v');
+					}
+				}
+			}
+		}
+	} elsif($reader->nodeType() == 15) {
+		if(defined($name) && defined($is_in) && defined($lat) && defined($lon)) {
+			print "$name, $is_in: $lat, $lon\n";
+			$key = undef;
+			$node = undef;
+			$name = undef;
+			$lat = undef;
+			$lon = undef;
+			$is_in = undef;
+			$in_node = 0;
+		}
+	}
+}
