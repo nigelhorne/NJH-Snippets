@@ -79,6 +79,7 @@ my $name;
 my $is_in;
 my $lat;
 my $lon;
+my $place;
 
 while($reader->read()) {
 	processNode($reader);
@@ -116,18 +117,29 @@ sub processNode {
 						$name = $reader->getAttribute('v');
 					} elsif($key eq 'is_in') {
 						$is_in = $reader->getAttribute('v');
+					} elsif($key eq 'is_in:country') {
+						my $country = $reader->getAttribute('v');
+						if(defined($is_in) && ($is_in !~ /\Q$country\E$/)) {
+							$is_in .= ", $country";
+						} elsif(!defined($is_in)) {
+							$is_in = $country;
+						}
+					} elsif($key eq 'place') {
+						$place = $reader->getAttribute('v');
 					}
 				}
 			}
 		}
 	} elsif($reader->nodeType() == 15) {
-		if(defined($name) && defined($is_in) && defined($lat) && defined($lon)) {
+		if(defined($name) && defined($is_in) && defined($lat) && defined($lon) && defined($place)) {
 			$is_in =~ s/,(\w)/, $1/g;
 			$is_in =~ s/, United Kingdom/, UK/;
 			$is_in =~ s/, UK,.+$/, UK/;
 			$is_in =~ s/(England|Scotland|Wales), UK/$1/;
 			$is_in =~ s/, Europe$//;
 			$is_in =~ s/;\s?/, /g;
+			$is_in =~ s/United States of America$/USA/;
+			$is_in =~ s/United States$/USA/;
 			$is_in =~ s/(\w) USA$/$1, USA/;
 			my $preamble;
 			my $state;
@@ -149,6 +161,8 @@ sub processNode {
 				}
 			} elsif(my $code = $us->{state2code}{uc($is_in)}) {
 				$is_in = "$code, USA";
+			} elsif($code = $ca->{province2code}{uc($is_in)}) {
+				$is_in = "$code, Canada";
 			} else {
 				my $province;
 				if($is_in =~ /(.+), (.+), Canada/) {
@@ -159,6 +173,7 @@ sub processNode {
 				}
 				if($province && (length($province) > 2)) {
 					if(my $code = $ca->new()->{province2code}{uc($province)}) {
+
 						if($preamble) {
 							$is_in = "$preamble, $code, Canada";
 						} else {
