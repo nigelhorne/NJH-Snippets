@@ -96,6 +96,8 @@ sub processNode {
 				$lat = $reader->getAttribute('lat');
 				$lon = $reader->getAttribute('lon');
 				$in_node = 1;
+				$name = undef;
+				$is_in = undef;
 			}
 		} elsif($in_node) {
 			if($node eq 'tag') {
@@ -105,6 +107,8 @@ sub processNode {
 					if($key eq 'name:en') {
 						$name = $reader->getAttribute('v');
 						# print "$name\n";
+					} elsif(($key eq 'name') && !defined($name)) {
+						$name = $reader->getAttribute('v');
 					} elsif($key eq 'is_in') {
 						$is_in = $reader->getAttribute('v');
 					}
@@ -117,6 +121,7 @@ sub processNode {
 			$is_in =~ s/, United Kingdom/, UK/;
 			$is_in =~ s/, UK,.+$/, UK/;
 			$is_in =~ s/(England|Scotland|Wales), UK/$1/;
+			$is_in =~ s/, Europe$//;
 			print "$name, $is_in: $lat, $lon\n";
 			$key = undef;
 			$node = undef;
