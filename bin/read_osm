@@ -16,6 +16,7 @@ my @needfull;
 # Install Pre-requisites
 BEGIN {
 	my @modules = (
+		'Locale::US',
 		'XML::LibXML::Reader'
 	);
 
@@ -63,7 +64,9 @@ foreach my $module(@needfull) {
 
 binmode(STDOUT, "encoding(UTF-8)");
 
-open(my $pin, '-|', 'bzcat ../../../../Downloads/europe-latest.osm.bz2');
+die "Usage: $0 filename" unless($ARGV[0]);
+
+open(my $pin, '-|', "bzcat $ARGV[0]");
 my $reader = XML::LibXML::Reader->new(FD => $pin)
 	or die "cannot read file.xml\n";
 
@@ -122,6 +125,27 @@ sub processNode {
 			$is_in =~ s/, UK,.+$/, UK/;
 			$is_in =~ s/(England|Scotland|Wales), UK/$1/;
 			$is_in =~ s/, Europe$//;
+			$is_in =~ s/;\s?/, /g;
+			$is_in =~ s/(\w) USA$/$1, USA/;
+			my $preamble;
+			my $state;
+			if($is_in =~ /(.+), (.+), USA/) {
+				$preamble = $1;
+				$state = $2;
+			} elsif($is_in =~ /^(.+), USA/) {
+				$state = $1;
+			}
+			if($state && (length($state) > 2)) {
+				if(my $code = Locale::US->new()->{state2code}{uc($state)}) {
+					if($preamble) {
+						$is_in = "$preamble, $code, USA";
+					} else {
+						$is_in = "$code, USA";
+					}
+				} else {
+					die "Unknown state US $state";
+				}
+			}
 			print "$name, $is_in: $lat, $lon\n";
 			$key = undef;
 			$node = undef;
