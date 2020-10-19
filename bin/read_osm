@@ -209,6 +209,7 @@ sub processNode {
 						}
 					}
 				}
+				# $print = 0 if($is_in =~ /,.+,/);	# Just towns for now
 				print "$name, $is_in: $lat, $lon\n" if($print);
 			}
 			$name = undef;
