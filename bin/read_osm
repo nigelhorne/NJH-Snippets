@@ -61,6 +61,9 @@ sub processNode {
 		}
 	} elsif($reader->nodeType() == 15) {
 		if(defined($name) && defined($is_in) && defined($lat) && defined($lon)) {
+			$is_in =~ s/,(\w)/, $1/g;
+			$is_in =~ s/, United Kingdom/, UK/;
+			$is_in =~ s/(England|Scotland|Wales), UK/$1/;
 			print "$name, $is_in: $lat, $lon\n";
 			$key = undef;
 			$node = undef;
