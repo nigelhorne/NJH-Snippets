@@ -16,12 +16,12 @@ while($reader->read()) {
 
 sub processNode {
 	my $reader = shift;
-	printf "%d %d %s %d %d\n", ($reader->depth,
-		      $reader->nodeType,
-		      $reader->name,
-		      # $reader->isEmptyElement);
-		      $reader->attributeCount(),
-		      $reader->hasValue);
+	# printf "%d %d %s %d %d\n", ($reader->depth,
+		      # $reader->nodeType,
+		      # $reader->name,
+		      # # $reader->isEmptyElement);
+		      # $reader->attributeCount(),
+		      # $reader->hasValue);
 
 	# These constants are not exported by default :-(
 	if($reader->nodeType() == 1) {
