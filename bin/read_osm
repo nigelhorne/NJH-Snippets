@@ -16,7 +16,7 @@ my @needfull;
 # Install Pre-requisites
 BEGIN {
 	my @modules = (
-		'Locale::US',
+		'Locale::CA', 'Locale::US',
 		'XML::LibXML::Reader'
 	);
 
@@ -70,6 +70,8 @@ open(my $pin, '-|', "bzcat $ARGV[0]");
 my $reader = XML::LibXML::Reader->new(FD => $pin)
 	or die "cannot read file.xml\n";
 
+my $ca = Locale::CA->new();
+my $us = Locale::US->new();
 my $in_node;
 my $node;
 my $key;
@@ -136,14 +138,35 @@ sub processNode {
 				$state = $1;
 			}
 			if($state && (length($state) > 2)) {
-				if(my $code = Locale::US->new()->{state2code}{uc($state)}) {
+				if(my $code = $us->{state2code}{uc($state)}) {
 					if($preamble) {
 						$is_in = "$preamble, $code, USA";
 					} else {
 						$is_in = "$code, USA";
 					}
 				} else {
-					die "Unknown state US $state";
+					die "Unknown US state $state";
+				}
+			} elsif(my $code = $us->{state2code}{uc($is_in)}) {
+				$is_in = "$code, USA";
+			} else {
+				my $province;
+				if($is_in =~ /(.+), (.+), Canada/) {
+					$preamble = $1;
+					$province = $2;
+				} elsif($is_in =~ /^(.+), Canada/) {
+					$province = $1;
+				}
+				if($province && (length($province) > 2)) {
+					if(my $code = $ca->new()->{province2code}{uc($province)}) {
+						if($preamble) {
+							$is_in = "$preamble, $code, Canada";
+						} else {
+							$is_in = "$code, Canada";
+						}
+					} else {
+						die "Unknown Canadian province $province";
+					}
 				}
 			}
 			print "$name, $is_in: $lat, $lon\n";
