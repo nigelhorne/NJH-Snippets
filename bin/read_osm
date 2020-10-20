@@ -179,7 +179,7 @@ sub processNode {
 					$province = $1;
 				}
 				if($province && (length($province) > 2)) {
-					if(my $code = $ca->new()->{province2code}{uc($province)}) {
+					if(my $code = $ca->{province2code}{uc($province)}) {
 
 						if($preamble) {
 							$is_in = "$preamble, $code, Canada";
