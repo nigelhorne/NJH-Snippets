@@ -187,7 +187,7 @@ sub processNode {
 							$is_in = "$code, Canada";
 						}
 					} else {
-						die "Unknown Canadian province $province";
+						die "$is_in: unknown Canadian province $state";
 					}
 				} elsif($is_in =~ /(Canada|US)$/) {
 					$print = 0;
