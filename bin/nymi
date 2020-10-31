@@ -1,0 +1,19 @@
+#!/usr/bin/env perl
+
+# Create the notes of music from the initials of my soul mate
+
+use warnings;
+use strict;
+
+my @notes = ('N', 'Y', 'M', 'I');
+
+foreach my $note(@notes) {
+	$note = ord($note) - ord('A');
+
+	while($note >= 8) {
+		$note %= 8;
+	}
+	print chr($note + ord('A'));
+}
+
+print "\n";
