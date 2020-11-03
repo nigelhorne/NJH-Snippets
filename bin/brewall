@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+typeset -r WITHOUT_TIMEOUT="david"
+typeset -r WITH_TIMEOUT="amelia,pi2,pi2b,pi2c,pi4,netgate1,netgate3,smoker01.teada.net,vultr1.bandsman.co.uk,vultr2.bandsman.co.uk,oracle1.bandsman.co.uk,opc@oracle2.bandsman.co.uk,localhost"
+
+for i in $WITHOUT_TIMEOUT
+do
+	echo $i:
+	timeout -k 300 3300 ssh -C $i ". .bash_profile; logger testing $*; perl5/perlbrew/bin/perlbrew exec cpan -i $*"&
+done
+
+# logger testing $*
+# perlbrew exec cpan -i $*&
+
+timeout -k 300 3300 pdsh -u 3000 -R ssh -w $WITH_TIMEOUT ". .bash_profile; logger testing $*; timeout -k 300 3250 perl5/perlbrew/bin/perlbrew exec cpan -i $*" | tee /tmp/brewall.$$
+
+sync
+
+wait
