@@ -12,7 +12,7 @@ my @needfull;
 # Install Pre-requisites
 BEGIN {
 	# my @modules = ('Data::Printer', 'File::Slurp', 'JSON');
-	my @modules = ('LWP::Simple', 'JSON');
+	my @modules = ('LWP::Simple::WithCache', 'JSON');
 
 	foreach my $module(@modules) {
 		eval "use $module";
@@ -58,7 +58,7 @@ foreach my $module(@needfull) {
 # p JSON->new()->utf8()->decode(read_file('../../../geocoder-abbreviations/tokens/en.json'));
 # my $data = read_file('../../../geocoder-abbreviations/tokens/en.json');
 # p $data;
-my $data = get('https://raw.githubusercontent.com/mapbox/geocoder-abbreviations/master/tokens/en.json');
+my $data = LWP::Simple::WithCache::get('https://raw.githubusercontent.com/mapbox/geocoder-abbreviations/master/tokens/en.json');
 
 my %abbreviations = map { uc($_->{'full'}) => uc($_->{'canonical'}) } @{JSON->new()->utf8()->decode($data)};
 
