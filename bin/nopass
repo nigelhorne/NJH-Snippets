@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# Print my CPAN test failures in the last day
+# Print my CPAN test failures in the last 3 days
 
 use warnings;
 use strict;
@@ -9,6 +9,9 @@ use Data::Dumper;
 
 no lib '.';
 
+use constant ONE_DAY => 24 * 60 * 60;
+use constant THREE_DAYS => ONE_DAY * 3;
+
 my @needfull;
 
 # Install Pre-requisites
@@ -16,7 +19,7 @@ BEGIN {
 	my @modules = (
 		'DateTime', 'Date::Parse',
 		'File::Spec', 'HTTP::Cache::Transparent',
-		'LWP::Simple', 'XML::Hash',
+		'LWP::Simple::WithCache', 'XML::Hash',
 	);
 
 	foreach my $module(@modules) {
@@ -52,34 +55,34 @@ foreach my $module(@needfull) {
 }
 
 my $cachedir = $ENV{'CACHEDIR'};
-if(!defined($cachedir)) {
-	$cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache');
-}
-
-if(!-d $cachedir) {
-	mkdir $cachedir || die "$cachedir: $!";
-}
-$cachedir = File::Spec->catfile($cachedir, 'http-cache-transparent');
-if(!-d $cachedir) {
-	mkdir $cachedir || die "$cachedir: $!";
+if($cachedir) {
+	mkdir $cachedir, 0700 if(!-d $cachedir);
+	$cachedir = File::Spec->catfile($cachedir, 'http-cache-transparent');
+} else {
+	# $cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache', 'http-cache-transparent');
+	$cachedir = File::Spec->catfile(File::HomeDir->my_home(), '.cache', 'http-cache-transparent');
 }
 
 HTTP::Cache::Transparent::init({
 	BasePath => $cachedir,
-	Verbose => 0,
-	NoUpdate => 24 * 60 * 60,
-});
+	# Verbose => $opts{'v'} ? 1 : 0,
+	NoUpdate => ONE_DAY,
+	MaxAge => 30 * 24
+}) || die "$0: $cachedir: $!";
 
-my $content = get('http://cpantesters.org/author/N/NHORNE-nopass.rss');
+my $content = LWP::Simple::WithCache::get('http://cpantesters.org/author/N/NHORNE-nopass.rss');
 die if(!defined($content));
 
 my $now = DateTime->now();
+
+# my $x = XML::Hash->new()->fromXMLStringtoHash($content)->{'rss'}->{'channel'}->{'item'};
+# print Data::Dumper->new([$x])->Dump();
 
 for my $item(@{XML::Hash->new()->fromXMLStringtoHash($content)->{'rss'}->{'channel'}->{'item'}}) {
 	my $pubdate = str2time($item->{'pubDate'}->{'text'});
 
 	my $ago = $now->epoch() - $pubdate;
-	if($ago <= 24 * 60 * 60) {
+	if($ago <= THREE_DAYS) {
 		print "$ago seconds ago:\n\t", $item->{'title'}->{'text'}, ': ', $item->{'link'}->{'text'}, "\n";
 	}
 }
