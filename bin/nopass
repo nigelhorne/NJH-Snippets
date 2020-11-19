@@ -9,7 +9,8 @@ use Data::Dumper;
 
 no lib '.';
 
-use constant ONE_DAY => 24 * 60 * 60;
+use constant ONE_HOUR => 60 * 60;
+use constant ONE_DAY => 24 * ONE_HOUR;
 use constant THREE_DAYS => ONE_DAY * 3;
 
 my @needfull;
@@ -66,7 +67,7 @@ if($cachedir) {
 HTTP::Cache::Transparent::init({
 	BasePath => $cachedir,
 	# Verbose => $opts{'v'} ? 1 : 0,
-	NoUpdate => ONE_DAY,
+	NoUpdate => ONE_HOUR,
 	MaxAge => 30 * 24
 }) || die "$0: $cachedir: $!";
 
