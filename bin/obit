@@ -1,0 +1,256 @@
+#!/usr/bin/env perl
+
+# Create CSV from https://sites.rootsweb.com/~obituary/ and
+#	https://mlarchives.rootsweb.com/listindexes/emails?listname=gen-obit
+
+use strict;
+use warnings;
+use DBI;
+# use DBD::SQLite::Constants qw/:file_open/;	# For SQLITE_OPEN_READONLY
+use LWP::ConnCache;
+use LWP::UserAgent::WithCache;
+use Lingua::EN::NameCase qw(nc);
+use Try::Tiny;
+
+sub freelists($$);
+sub mlarchives($$);
+sub insert($$$$$$$$);
+
+BEGIN {
+	$SIG{__WARN__} = sub {
+		my $warning = shift;
+		if($warning =~ /^Use of uninitialized value/) {
+			die $warning;
+		}
+	}
+}
+
+my $dbh = DBI->connect('dbi:SQLite:dbname=obituaries.sqlite', undef, undef, { RaiseError => 1, AutoCommit => 0, synchronous => 0, locking_mode => 'EXCLUSIVE' });
+if($dbh) {
+	$dbh->do('CREATE TABLE obituaries(first VARCHAR NOT NULL, last VARCHAR, maiden, VARCHAR, age INTEGER, place VARCHAR, newspaper VARCHAR NOT NULL, date DATE NOT NULL)');
+	$dbh->do('PRAGMA cache_size = -65536');	# 64MB
+	$dbh->do('PRAGMA journal_mode = OFF');
+} else {
+	die "obituaries.sqlite: $!";
+}
+
+my $ua = LWP::UserAgent::WithCache->new(timeout => 10);
+$ua->env_proxy(1);
+$ua->agent('Mozilla/5.0');
+$ua->conn_cache(LWP::ConnCache->new());
+
+# print '"last","first","maiden","age","place","newspapername","newspaperdate","tag"', "\n";
+
+my $page = 1;
+while(1) {
+	$| = 1;
+	printf "%-70s\r", $page;
+	$| = 0;
+
+	last if(!mlarchives($ua, $page));
+	$page++;
+}
+
+print "\n";
+
+my $issue = 9;
+while(1) {
+	$| = 1;
+	printf "%-70s\r", $issue;
+	$| = 0;
+
+	last if(!freelists($ua, 'v25no' . sprintf('%03d', $issue)));
+	$issue++;
+}
+
+print "\n";
+
+sub mlarchives($$) {
+	my $ua = shift;
+	my $page = shift;
+	my $url = "https://mlarchives.rootsweb.com/listindexes/emails?listname=gen-obit&page=$page";
+
+	my $response = $ua->get($url);
+
+	my $data;
+	if ($response->is_success) {
+		$data = $response->decoded_content;
+	} else {
+		return 0 if($response->status_line() eq '404 Not Found');
+		die $response->status_line;
+	}
+
+	# mlarchive data is much easier to parse because it's nicely all on one line
+	$data =~ s/\r//g;
+
+	# -1 => header, 0 => post-preamble, 1 => post
+	my $stage = -1;
+	my @lines = split(/$/ms, $data);
+
+	my $last_line;
+
+	while(my $line = shift(@lines)) {
+		# LAST NAME, First Name (MAIDEN); Age; Place of Death; Newspaper Name; Newspaper date; tagname
+
+		next if((defined($last_line)) && ($line eq $last_line));
+		$last_line = $line;
+
+		$line =~ s/^\n//;
+		# print "$stage: $line\n";
+		if($line =~ /^------/) {
+			if($stage == -1) {
+				if($line =~ /No Results/) {
+					# last page
+					return 0;
+				}
+				# Introduction to a post about to start
+				$stage = 0;
+			} elsif($stage == 0) {
+				# Post contents about to start
+				$stage = 1;
+			} else {
+				# Introduction to a post about to start
+				$stage = 0;
+			}
+			next;
+		}
+		next unless($stage == 1);
+
+		if($line =~ /<\/p>.+/) {
+			$stage = -1;
+			next;
+		}
+		next if($line =~ /^\s/);
+		$line =~ s/&nbsp;/ /g;
+		$line =~ s/&gt;/>/g;
+		$line =~ s/&quot;/"/g;
+		$line =~ s/&#39;/'/g;
+		$line =~ s/'/''/g;
+		my ($name, $age, $place, $newspaper, $date, $tag) = split(/;\s?/, $line);
+
+		next if((!defined($tag)) || ($tag eq ''));
+
+		# use Data::Dumper;
+		# print __LINE__, ": $page: '$line' ", Data::Dumper->new([split(/;\s?/, $line)])->Dump();
+		next unless(defined($name));
+		my ($last, $first) = split(',\s', $name);
+		my $maiden = 'NULL';
+		if($first) {
+			if($first =~ /(.+)\s\((.+)\)$/) {
+				$first = nc($1);
+				$maiden = nc($2);
+			}
+		} else {
+			$first = 'NULL';
+		}
+		$last = nc($last);
+		# $age //= '';
+
+		# print "$line->>>>>>>>>>\n";
+		insert($dbh, $first, $last, $maiden, $age, $place, $date, $newspaper) if($last =~ /^[A-Z]/);
+		# print "\"$last\",\"$first\",\"$maiden\",\"$age\",\"$place\",\"$date\",\"$newspaper\"\n" if($last =~ /^[A-Z]/);
+	}
+	return 1;
+}
+
+sub freelists($$) {
+	my $ua = shift;
+	my $issue = shift;
+	my $url = "https://www.freelists.org/post/obitdailytimes/Obituary-Daily-Times-$issue";
+
+	my $response = $ua->get($url);
+
+	my $data;
+	if ($response->is_success) {
+		$data = $response->decoded_content;
+	} else {
+		return 0 if($response->status_line() eq '404 Not Found');
+		die $response->status_line;
+	}
+
+	# print $data;
+	# exit;
+
+	$data =~ s/.*?^\-\-\-\-+<br>$//ms;
+	$data =~ s/.*?^\-\-\-\-+<br>$//ms;
+	# $data =~ s/(.*?)^\-\-\-\-+<br>$/$1/ms;
+
+	my @lines = split(/<br>$/ms, $data);
+
+	while(my $line = shift(@lines)) {
+		# LAST NAME, First Name (MAIDEN); Age; Place of Death; Newspaper Name; Newspaper date; tagname
+
+		$line =~ s/^\n//;
+		last if($line =~ /^\-\-\-\-\-\-\-\-/);
+		$line =~ s/&nbsp;/ /g;
+		$line =~ s/&gt;/>/g;
+		$line =~ s/&quot;/"/g;
+		$line =~ s/&#39;/'/g;
+		$line =~ s/'/''/g;
+		my ($name, $age, $place, $newspaper, $date, $tag) = split(/;\s?/, $line);
+		if((!defined($tag)) || ($tag eq '')) {
+			my $cont = shift(@lines);
+
+			$cont =~ s/^\n//;
+			last if($line =~ /^\-\-\-\-\-\-\-\-/);
+			$cont =~ s/&nbsp;/ /g;
+			$cont =~ s/&gt;/>/g;
+			$line =~ s/&quot;/"/g;
+			$line .= $cont;
+			($name, $age, $place, $newspaper, $date, $tag) = split(/;\s?/, $line);
+		}
+		# use Data::Dumper;
+		# print __LINE__, ": $issue: ", Data::Dumper->new([split(/;\s?/, $line)])->Dump();
+		next unless(defined($name));
+		my ($last, $first) = split(',\s', $name);
+		my $maiden = '';
+		if($first) {
+			if($first =~ /(.+)\s\((.+)\)$/) {
+				$first = nc($1);
+				$maiden = nc($2);
+			}
+		} else {
+			$first = '';
+		}
+		$last = nc($last);
+		# $age //= '';
+
+		# print "$line->>>>>>>>>>\n";
+		# print "\"$last\",\"$first\",\"$maiden\",\"$age\",\"$place\",\"$date\",\"$newspaper\"\n" if($last =~ /^[A-Z]/);
+		insert($dbh, $first, $last, $maiden, $age, $place, $date, $newspaper) if($last =~ /^[A-Z]/);
+	}
+	return 1;
+}
+
+sub insert($$$$$$$$)
+{
+	my ($dbh, $first, $last, $maiden, $age, $place, $date, $newspaper) = @_;
+
+	my $query = 'INSERT INTO obituaries(first, last, maiden, age, place, date, newspaper) VALUES (';
+	$query .= "'$first',";
+	$query .= "'$last',";
+	if($maiden eq 'NULL') {
+		$query .= 'NULL,';
+	} else {
+		$query .= "'$maiden',";
+	}
+	if($age eq '') {
+		$query .= 'NULL,';
+	} else {
+		$query .= "$age,";
+	}
+	$query .= "'$place',";
+	$query .= "$date,";
+	$query .= "'$newspaper')";
+
+	# $| = 1;
+	# printf "%-70s\r", $query;
+	# $| = 0;
+
+	try {
+		$dbh->do($query);
+	} catch {
+		my @call_details = caller(1);
+		die "Error in insert ($query) called from line ", $call_details[2], "\n";
+	};
+}
