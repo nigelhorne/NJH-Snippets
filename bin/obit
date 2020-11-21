@@ -101,7 +101,7 @@ sub mlarchives($$) {
 		$data = $response->decoded_content();
 	} else {
 		return 0 if($response->status_line() eq '404 Not Found');
-		die "$url ", $response->status_line();
+		die "$url: ", $response->status_line();
 	}
 
 	# mlarchive data is much easier to parse because it's nicely all on one line
@@ -161,14 +161,14 @@ sub mlarchives($$) {
 		# print __LINE__, ": $page: '$line' ", Data::Dumper->new([split(/;\s?/, $line)])->Dump();
 		next unless(defined($name));
 		my ($last, $first) = split(',\s', $name);
-		my $maiden = 'NULL';
+		my $maiden;
 		if($first) {
 			if($first =~ /(.+)\s\((.+)\)$/) {
 				$first = nc($1);
 				$maiden = nc($2);
+			} else {
+				$first = nc($first);
 			}
-		} else {
-			$first = 'NULL';
 		}
 		$last = nc($last);
 		# $age //= '';
@@ -193,7 +193,7 @@ sub freelists($$) {
 		$data = $response->decoded_content();
 	} else {
 		return 0 if($response->status_line() eq '404 Not Found');
-		die "$url ", $response->status_line();
+		die "$url: ", $response->status_line();
 	}
 
 	# print $data;
@@ -234,6 +234,8 @@ sub freelists($$) {
 			if($first =~ /(.+)\s\((.+)\)$/) {
 				$first = nc($1);
 				$maiden = nc($2);
+			} else {
+				$first = nc($first);
 			}
 		} else {
 			$first = '';
@@ -256,7 +258,7 @@ sub queue($$$$$$$)
 	my %columns;
 	$columns{'first'} = $first;
 	$columns{'last'} = $last;
-	if($maiden ne 'NULL') {
+	if($maiden) {
 		$columns{'maiden'} = $maiden;
 	}
 	if($age ne '') {
