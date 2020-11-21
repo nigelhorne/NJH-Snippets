@@ -85,9 +85,11 @@ while(1) {
 	$issue++;
 }
 
-flush($dbh);
-
 print "\n";
+
+flush($dbh);
+$dbh->commit();
+$dbh->disconnect();
 
 sub mlarchives($$) {
 	my $ua = shift;
@@ -100,8 +102,10 @@ sub mlarchives($$) {
 	if($response->is_success) {
 		$data = $response->decoded_content();
 	} else {
-		return 0 if($response->status_line() eq '404 Not Found');
-		die "$url: ", $response->status_line();
+		if($response->status_line() ne '404 Not Found') {
+			warn "$url: ", $response->status_line();
+		}
+		return 0;
 	}
 
 	# mlarchive data is much easier to parse because it's nicely all on one line
@@ -192,8 +196,10 @@ sub freelists($$) {
 	if($response->is_success) {
 		$data = $response->decoded_content();
 	} else {
-		return 0 if($response->status_line() eq '404 Not Found');
-		die "$url: ", $response->status_line();
+		if($response->status_line() ne '404 Not Found') {
+			warn "$url: ", $response->status_line();
+		}
+		return 0;
 	}
 
 	# print $data;
