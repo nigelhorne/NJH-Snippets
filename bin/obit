@@ -64,23 +64,12 @@ $ua->conn_cache()->total_capacity(undef);
 my $page = 1;
 my @queue;
 while(1) {
-	$| = 1;
-	printf "%-70s\r", $page;
-	$| = 0;
-	print "\n";
-
 	last if(!mlarchives($ua, $page));
 	$page++;
 }
 
-print "\n";
-
 my $issue = 9;
 while(1) {
-	$| = 1;
-	printf "%-70s\r", $issue;
-	$| = 0;
-
 	last if(!freelists($ua, 'v25no' . sprintf('%03d', $issue)));
 	$issue++;
 }
@@ -96,6 +85,10 @@ sub mlarchives($$) {
 	my $page = shift;
 	my $url = "https://mlarchives.rootsweb.com/listindexes/emails?listname=gen-obit&page=$page";
 
+	$| = 1;
+	printf "%-70s\r", $url;
+	$| = 0;
+
 	my $response = $ua->get($url);
 
 	my $data;
@@ -103,7 +96,7 @@ sub mlarchives($$) {
 		$data = $response->decoded_content();
 	} else {
 		if($response->status_line() ne '404 Not Found') {
-			warn "$url: ", $response->status_line();
+			warn "\n$url: ", $response->status_line();
 		}
 		return 0;
 	}
@@ -190,6 +183,10 @@ sub freelists($$) {
 	my $issue = shift;
 	my $url = "https://www.freelists.org/post/obitdailytimes/Obituary-Daily-Times-$issue";
 
+	$| = 1;
+	printf "%-70s\r", $url;
+	$| = 0;
+
 	my $response = $ua->get($url);
 
 	my $data;
@@ -197,7 +194,7 @@ sub freelists($$) {
 		$data = $response->decoded_content();
 	} else {
 		if($response->status_line() ne '404 Not Found') {
-			warn "$url: ", $response->status_line();
+			warn "\n$url: ", $response->status_line();
 		}
 		return 0;
 	}
@@ -218,7 +215,7 @@ sub freelists($$) {
 		last if($line =~ /^\-\-\-\-\-\-\-\-/);
 		$line =~ s/&nbsp;/ /g;
 		$line = decode_entities($line);
-		# $line =~ s/'/''/g;
+		$line =~ s/'/''/g;
 		my ($name, $age, $place, $newspaper, $date, $tag) = split(/;\s?/, $line);
 		if((!defined($tag)) || ($tag eq '')) {
 			my $cont = shift(@lines);
@@ -235,6 +232,12 @@ sub freelists($$) {
 		# print __LINE__, ": $issue: ", Data::Dumper->new([split(/;\s?/, $line)])->Dump();
 		next unless(defined($name));
 		my ($last, $first) = split(',\s', $name);
+		next unless(defined($last));
+
+		# Parsing completely broken
+		# e.g. https://www.freelists.org/post/obitdailytimes/Obituary-Daily-Times-v25no010
+		last unless(defined($newspaper));
+
 		my $maiden = '';
 		if($first) {
 			if($first =~ /(.+)\s\((.+)\)$/) {
@@ -267,12 +270,16 @@ sub queue($$$$$$$)
 	if($maiden) {
 		$columns{'maiden'} = $maiden;
 	}
-	if($age ne '') {
+	if(defined($age) && ($age ne '')) {
 		$columns{'age'} = $age;
 	}
 	$columns{'place'} = $place;
-	return unless($date =~ /^\d/);
-	$columns{'date'} = $date;
+	if($date) {
+		return unless($date =~ /^\d/);
+		$columns{'date'} = $date;
+	} else {
+		return;	# If we don't know the date of publication, it's not easy to find
+	}
 	$columns{'newspaper'} = $newspaper;
 
 	push @queue, \%columns;
@@ -297,7 +304,7 @@ sub flush($)
 		} else {
 			$query .= "NULL,'" . $columns{'last'} . "',";
 		}
-		if($columns{'maiden'}) {
+		if($columns{'maiden'} && ($columns{'maiden'} ne ' ')) {
 			$query .= "'" . $columns{'maiden'} . "',";
 		} else {
 			$query .= 'NULL,';
@@ -307,8 +314,16 @@ sub flush($)
 		} else {
 			$query .= 'NULL,';
 		}
-		$query .= "'" . $columns{'place'} . "',";
-		$query .= "'" . $columns{'date'} . "',";
+		if($columns{'place'} && ($columns{'place'} ne '')) {
+			$query .= "'" . $columns{'place'} . "',";
+		} else {
+			$query .= 'NULL,';
+		}
+		if($columns{'date'}) {
+			$query .= "'" . $columns{'date'} . "',";
+		} else {
+			$query .= 'NULL,';
+		}
 		$query .= "'" . $columns{'newspaper'} . "')";
 	}
 
@@ -320,6 +335,7 @@ sub flush($)
 		$dbh->do($query);
 	} catch {
 		my @call_details = caller(0);
-		die "Error in insert ($query) called from line ", $call_details[2], "\n";
+		die "\nError in insert ($query) called from line ",
+			$call_details[2], ': ', $dbh->errstr(), "\n";
 	};
 }

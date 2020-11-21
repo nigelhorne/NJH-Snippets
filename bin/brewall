@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 typeset -r WITHOUT_TIMEOUT="david"
-typeset -r WITH_TIMEOUT="amelia,pi2,pi2b,pi2c,pi4,netgate1,netgate3,smoker01.teada.net,vultr1.bandsman.co.uk,vultr2.bandsman.co.uk,oracle1.bandsman.co.uk,opc@oracle2.bandsman.co.uk,localhost"
+typeset -r WITH_TIMEOUT="amelia,philips,pi2,pi2b,pi2c,pi4,netgate1,netgate3,smoker01.teada.net,vultr1.bandsman.co.uk,vultr2.bandsman.co.uk,oracle1.bandsman.co.uk,opc@oracle2.bandsman.co.uk,localhost"
 
 for i in $WITHOUT_TIMEOUT
 do
