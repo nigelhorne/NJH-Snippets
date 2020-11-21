@@ -7,6 +7,7 @@ use strict;
 use warnings;
 use DBI;
 # use DBD::SQLite::Constants qw/:file_open/;	# For SQLITE_OPEN_READONLY
+use HTML::Entities;
 use LWP::ConnCache;
 use LWP::UserAgent::WithCache;
 use Lingua::EN::NameCase qw(nc);
@@ -14,7 +15,8 @@ use Try::Tiny;
 
 sub freelists($$);
 sub mlarchives($$);
-sub insert($$$$$$$$);
+sub queue($$$$$$$);
+sub flush($);
 
 BEGIN {
 	$SIG{__WARN__} = sub {
@@ -42,10 +44,12 @@ $ua->conn_cache(LWP::ConnCache->new());
 # print '"last","first","maiden","age","place","newspapername","newspaperdate","tag"', "\n";
 
 my $page = 1;
+my @queue;
 while(1) {
 	$| = 1;
 	printf "%-70s\r", $page;
 	$| = 0;
+	print "\n";
 
 	last if(!mlarchives($ua, $page));
 	$page++;
@@ -62,6 +66,8 @@ while(1) {
 	last if(!freelists($ua, 'v25no' . sprintf('%03d', $issue)));
 	$issue++;
 }
+
+flush($dbh);
 
 print "\n";
 
@@ -120,11 +126,14 @@ sub mlarchives($$) {
 			$stage = -1;
 			next;
 		}
+		if($line =~ /^LAST NAME/) {
+			# a whole entry is unparsable
+			# e.g. https://mlarchives.rootsweb.com/listindexes/emails?listname=gen-obit&page=3
+			next;
+		}
 		next if($line =~ /^\s/);
 		$line =~ s/&nbsp;/ /g;
-		$line =~ s/&gt;/>/g;
-		$line =~ s/&quot;/"/g;
-		$line =~ s/&#39;/'/g;
+		$line = decode_entities($line);
 		$line =~ s/'/''/g;
 		my ($name, $age, $place, $newspaper, $date, $tag) = split(/;\s?/, $line);
 
@@ -147,9 +156,10 @@ sub mlarchives($$) {
 		# $age //= '';
 
 		# print "$line->>>>>>>>>>\n";
-		insert($dbh, $first, $last, $maiden, $age, $place, $date, $newspaper) if($last =~ /^[A-Z]/);
+		queue($first, $last, $maiden, $age, $place, $date, $newspaper) if($last =~ /^[A-Z]/);
 		# print "\"$last\",\"$first\",\"$maiden\",\"$age\",\"$place\",\"$date\",\"$newspaper\"\n" if($last =~ /^[A-Z]/);
 	}
+	flush($dbh);
 	return 1;
 }
 
@@ -183,16 +193,14 @@ sub freelists($$) {
 		$line =~ s/^\n//;
 		last if($line =~ /^\-\-\-\-\-\-\-\-/);
 		$line =~ s/&nbsp;/ /g;
-		$line =~ s/&gt;/>/g;
-		$line =~ s/&quot;/"/g;
-		$line =~ s/&#39;/'/g;
-		$line =~ s/'/''/g;
+		$line = decode_entities($line);
+		# $line =~ s/'/''/g;
 		my ($name, $age, $place, $newspaper, $date, $tag) = split(/;\s?/, $line);
 		if((!defined($tag)) || ($tag eq '')) {
 			my $cont = shift(@lines);
 
 			$cont =~ s/^\n//;
-			last if($line =~ /^\-\-\-\-\-\-\-\-/);
+			last if($cont =~ /^\-\-\-\-\-\-\-\-/);
 			$cont =~ s/&nbsp;/ /g;
 			$cont =~ s/&gt;/>/g;
 			$line =~ s/&quot;/"/g;
@@ -217,40 +225,71 @@ sub freelists($$) {
 
 		# print "$line->>>>>>>>>>\n";
 		# print "\"$last\",\"$first\",\"$maiden\",\"$age\",\"$place\",\"$date\",\"$newspaper\"\n" if($last =~ /^[A-Z]/);
-		insert($dbh, $first, $last, $maiden, $age, $place, $date, $newspaper) if($last =~ /^[A-Z]/);
+		queue($first, $last, $maiden, $age, $place, $date, $newspaper) if($last =~ /^[A-Z]/);
 	}
+	flush($dbh);
 	return 1;
 }
 
-sub insert($$$$$$$$)
+sub queue($$$$$$$)
 {
-	my ($dbh, $first, $last, $maiden, $age, $place, $date, $newspaper) = @_;
+	my ($first, $last, $maiden, $age, $place, $date, $newspaper) = @_;
 
-	my $query = 'INSERT INTO obituaries(first, last, maiden, age, place, date, newspaper) VALUES (';
-	$query .= "'$first',";
-	$query .= "'$last',";
-	if($maiden eq 'NULL') {
-		$query .= 'NULL,';
-	} else {
-		$query .= "'$maiden',";
+	my %columns;
+	$columns{'first'} = $first;
+	$columns{'last'} = $last;
+	if($maiden ne 'NULL') {
+		$columns{'maiden'} = $maiden;
 	}
-	if($age eq '') {
-		$query .= 'NULL,';
-	} else {
-		$query .= "$age,";
+	if($age ne '') {
+		$columns{'age'} = $age;
 	}
-	$query .= "'$place',";
-	$query .= "$date,";
-	$query .= "'$newspaper')";
+	$columns{'place'} = $place;
+	return unless($date =~ /^\d/);
+	$columns{'date'} = $date;
+	$columns{'newspaper'} = $newspaper;
+
+	push @queue, \%columns;
+}
+
+sub flush($)
+{
+	my $dbh = shift;
+
+	my $query;
+
+	while(my $row = pop @queue) {
+		if(!defined($query)) {
+			$query = 'INSERT INTO obituaries(first, last, maiden, age, place, date, newspaper) VALUES (';
+		} else {
+			$query .= ',(';
+		}
+		my %columns = %{$row};
+
+		$query .= "'" . $columns{'first'} . "','" . $columns{'last'} . "',";
+		if($columns{'maiden'}) {
+			$query .= "'" . $columns{'maiden'} . "',";
+		} else {
+			$query .= 'NULL,';
+		}
+		if($columns{'age'}) {
+			$query .= "'" . $columns{'age'} . "',";
+		} else {
+			$query .= 'NULL,';
+		}
+		$query .= "'" . $columns{'place'} . "',";
+		$query .= "'" . $columns{'date'} . "',";
+		$query .= "'" . $columns{'newspaper'} . "')";
+	}
 
 	# $| = 1;
-	# printf "%-70s\r", $query;
+	# printf "%-70s\n", $query;
 	# $| = 0;
 
 	try {
 		$dbh->do($query);
 	} catch {
-		my @call_details = caller(1);
+		my @call_details = caller(0);
 		die "Error in insert ($query) called from line ", $call_details[2], "\n";
 	};
 }
