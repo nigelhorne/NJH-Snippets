@@ -1,0 +1,12 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use autodie qw(:all);
+use File::Type;
+
+if(scalar(@ARGV) == 0) {
+	die "Usage: $0 file";
+}
+
+print File::Type->new()->checktype_filename($ARGV[0]), "\n";
