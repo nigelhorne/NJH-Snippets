@@ -1,3 +1,4 @@
+---
 # For most projects, this workflow file will not need changing; you simply need
 # to commit it to your repository.
 #
@@ -59,11 +60,11 @@ jobs:
     #    and modify them (or add more) to build your code if your project
     #    uses a compiled language
 
-    #- run: |
+    # - run: |
     #   make bootstrap
     #   make release
     - run: |
-      cd src; cc date2int.c -o date2int; cc format.c -o format; cc tapechk.c -o tapechk
+        cd src && cc date2int.c -o date2int && cc format.c -o format && cc tapechk.c -o tapechk
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
