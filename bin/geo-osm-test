@@ -7,6 +7,7 @@ use warnings;
 use strict;
 use autodie qw(:all);
 
+# use Data::Dumper;
 use File::Spec;
 use HTTP::Cache::Transparent;
 use Geo::Coder::OSM;
@@ -54,9 +55,10 @@ sub run {
 
 	eval {
 		if(my $rc = $geocoder->geocode($place)) {
-			# print "$place: ", $rc->{'lat'}, '/', $rc->{'lon'}, "\n";
+			print "$place: ", $rc->{'lat'}, '/', $rc->{'lon'}, "\n";
+			# print Data::Dumper->new([$rc])->Dump();
 		} else {
-			print "$place failed\n\t$people\n";
+			# print "$place failed\n\t$people\n";
 		}
 	};
 	if($@) {
