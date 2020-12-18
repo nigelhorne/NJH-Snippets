@@ -5,6 +5,11 @@
 #include <ctype.h>
 
 /*
+ * Convert date to int and vice versa to take less space in a file and for
+ *	quicker sorting and comparisons
+ */
+
+/*
  * twobytes2char -
  *	e.g. twobytes2char("88") returns 88.
  *	In this context char means a number -128 -> 127
@@ -42,7 +47,7 @@ static	const	int	M0[] = {
 	0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335
 };
 
-static	const	*errstring;
+/*static	const	char	*errstring;*/
 
 /*
  * today:
@@ -73,6 +78,7 @@ char *ptr;
  *
  * Dates aren't expected before 1970, so 01 will be taken to be 2001 etc.
  */
+int
 date2int(const char *date)
 {
 	register int y, m, d;
@@ -140,6 +146,7 @@ int i;
 	return(date);
 }
 
+int
 itoday()
 {
 	return(date2int(today(NULL)));
