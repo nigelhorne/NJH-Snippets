@@ -5,6 +5,6 @@ use warnings;
 use Config::Auto;
 use Data::Dumper;
 
-my $config = Config::Auto::parse('/home/njh/bandsman.co.uk/cgi-bin/../../conf/microcenter');
+my $config = Config::Auto::parse('microcenter', path => '/home/njh/bandsman.co.uk/cgi-bin/../../conf/');
 
 print Data::Dumper->new([$config])->Dump();
