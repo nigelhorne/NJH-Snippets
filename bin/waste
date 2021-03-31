@@ -10,4 +10,5 @@ fi
 	grep -n "  /\*" $*
 	fgrep -n "  " $* | fgrep \" | grep -v "	 " | grep -v "^ "
 	fgrep -n rintf $* | grep -v %
+	fgrep ' . ' $* | fgrep print | fgrep -v color
 ) | more
