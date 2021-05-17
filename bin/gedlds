@@ -1,0 +1,587 @@
+#!/usr/bin/env perl
+
+# Author Nigel Horne: njh@bandsman.co.uk
+# Copyright (C) 2012-2021, Nigel Horne
+
+# Usage is subject to licence terms.
+# The licence terms of this software are as follows:
+# Personal single user, single computer use: GPL2
+# All other users (including Commercial, Charity, Educational, Government)
+#	must apply in writing for a licence for use from Nigel Horne at the
+#	above e-mail.
+
+# Look up names in a Gedcom file on findagrave, billiongraves, gravestonephotos,
+# canadianheadstones and tombfinder
+
+# As the size of these databases increases, one can expect more matches. Do
+# your part to help - sign up to billiongraves.com and start uploading pictures.
+
+# There will be plenty of false matches - expect that. Personally I'd be happy
+# with 75% being false matches if it meant I got new information - Genealogy
+# is all about false leads!
+
+# Often data doesn't include the country of death. When that happens I have
+# three choices:
+# 1) Ignore that record (I think that would miss too many people)
+# 2) Search for that person in all countries (I think that would return too
+#	many wrong matches)
+# 3) Make an educated guess on the country.
+# I've gone for option 3. That's going to give me a lot of work, but I think
+# will be the best in the long run. Don't expect it to be right yet, so for now
+# expect records to be missed when the country isn't given.
+
+# TODO: Optimise each driver to minimise impact on the websites
+# TODO: Handle alternative names
+# FIXME: Handle multiple pages
+# FIXME: only looks at one husband's surname - won't work if
+#	a woman was married more than once
+# FIXME: If death country is UK, only searches in England
+# FIXME: Expect too many matches on records without a country and csp of death
+# FIXME: It's slow.
+
+use strict;
+use warnings;
+use diagnostics;
+# use warnings::unused;
+use feature 'state';
+
+no lib '.';
+
+my @needfull;
+
+# Install Pre-requisites
+BEGIN {
+	my @modules = (
+		'Encode', 'Gedcom', 'Getopt::Std',
+		'WWW::Mechanize::Cached::GZip',
+		'HTML::SimpleLinkExtor',
+		'LWP', 'XML::LibXML', 'HTTP::Cache::Transparent',
+		'CHI', 'Locale::Object::Country', 'Locale::US',
+		'HTTP::Cookies', 'Locale::SubCountry', 'Memoize'
+	);
+
+	foreach my $module(@modules) {
+		eval "use $module";
+		if($@) {
+			push @needfull, $module;
+		}
+	}
+	if(scalar(@needfull)) {
+		my $list = join(' ', @needfull);
+		print "Installing $list\n";
+		system("cpan -i $list");
+	}
+
+	$SIG{__WARN__} = sub {
+		my $warning = shift;
+		if($warning =~ /^Use of uninitialized value/) {
+			die $warning;
+		}
+		warn $warning;
+	};
+}
+
+foreach my $module(@needfull) {
+	my $version;
+	if($module =~ /(.+)\s(.+)$/) {
+		$module = $1;
+		$version = $2;
+	}
+	if($module =~ /.+\/(.+)/) {
+		$module = $1;
+	}
+	$module =~ s/\.tar\.gz$//;
+	eval "require $module";
+	if($@) {
+		die $@;
+	}
+	$module->import();
+	# if($version && ($module::VERSION < $version)) {
+		# die "$module: need $version got ", $module::VERSION;
+	# }
+}
+
+my %opts;
+
+getopts('c:s:', \%opts);
+
+my $default_country = $opts{c};
+my $default_subcountry = $opts{s};
+
+die "Usage: gedgrave [ -c default-country-of-death ] [ -s default-subcountry-of-death ] filename\n" unless($ARGV[0]);
+
+my $ged = Gedcom->new(gedcom_file => $ARGV[0], read_only => 1);
+
+HTTP::Cache::Transparent::init( {
+	BasePath => '/tmp/cache/http-cache-transparent',
+	# Verbose => 1,
+	NoUpdate => 60 * 60,
+	MaxAge => 15 * 24} ) || die "gedgrave/cache: $!";
+
+# Gedcoms exported by ancestry.co.uk fail this...
+# die "Invalid gedcom file $ARGV[0]\n" unless($ged->validate());
+
+memoize('check_country');
+
+# Set of caches for each driver
+my $lcache = CHI->new(driver => 'File', root_dir => '/tmp/cache', namespace => 'tombfinder', expires_in => '1 day');
+
+# Set of WWW::Mechanize objects for each driver
+my $lmech = WWW::Mechanize::Cached::GZip->new();
+
+foreach my $person($ged->individuals()) {
+	# Gather the information on this person
+	my $name = $person->name();
+
+	# print "$name\n";
+	if($name =~ /(.+)\s*Jr\.?/i) {
+		$name = $1;
+	}
+	if($name =~ /(.+)Mc\s+(.+)/) {
+		$name = "$1$2";
+	}
+	$name =~ s/[\(\)]//g;
+
+	next unless($name =~ /^(.+)\s+\/(.+)\/$/);
+
+	my ($firstname, $middlename, $lastname);
+	$firstname = lc($1);
+	$lastname = lc($2);
+
+	next unless($firstname && $lastname);
+
+	if($firstname =~ /(.+)?\s+(.+)/) {
+		$firstname = $1;
+		unless($2 eq $lastname) {
+			$middlename = $2;
+		}
+	}
+
+	my $dob;
+	eval {
+		$dob = $person->get_value('birth date');
+	};
+	if($@) {
+		warn "Can't parse record for $firstname $lastname";
+		next;
+	}
+
+	my $dod = $person->get_value('death date') ? $person->get_value('death date') : $person->get_value('burial date');
+
+	if($dod && ($dod =~ /.*?(\d{3,4})/)) {
+		$dod = $1;
+	}
+
+	unless($dob) {
+		$dob = $person->get_value('baptism date');
+	}
+
+	if($dob && ($dob =~ /.*?(\d{3,4})/)) {
+		$dob = $1;
+	} elsif($dob) {
+		print $person->name() . ": invalid date of birth $dob\n";
+		$dob = undef;
+	}
+
+	if((!defined($dod)) && ((!defined($dob)) || ($dob > 1900))) {
+		# Assuming living if we don't have a date of death and
+		# they were born after 1900
+		next;
+	}
+
+	my $dcountry = $person->get_value('death place');
+	my $dcsp;
+
+	if($dcountry && ($dcountry =~ /(.*[,-])\s*(.+)/)) {
+		$dcsp = $1;
+		$dcountry = $2;
+		if($dcsp && ($dcsp =~ /.*[,-]\s*(.+)/)) {
+			$dcsp = $1;
+		}
+	}
+
+	if(defined($dcsp)) {
+		$dcsp =~ s/[,;.\)]//g;
+	}
+
+	# If this record has no death location, use the default values
+	if(defined($dcountry)) {
+		$dcountry =~ s/\s+$//;
+		if($dcountry =~ /(.+?)\./) {
+			unless($1 eq 'Co') {
+				$dcountry = $1;
+			}
+		}
+		$dcountry =~ s/\)//g;
+		$dcountry =~ s/[;.].*//;
+		my ($new_country, $csp) = check_country({
+			csp => $dcsp,
+			country => $dcountry,
+			default_country => $default_country,
+		});
+		if(defined($new_country)) {
+			$dcountry = $new_country;
+		} else {
+			if($default_country =~ /United States/i) {
+				# There may be a state in there somewhere
+				$dcountry = $person->get_value('death place');
+				if($dcountry =~ /,\s*([A-Z]{2})/) {
+					$dcountry = 'United States';
+					$dcsp = us_state($1);
+				}
+			}
+			unless($dcountry) {
+				print $person->name() . ": unknown country $dcountry\n";
+				$dcountry = undef;
+			}
+		}
+		$dcsp = $csp;
+	}
+
+	if($dcsp && $dcountry && ($dcsp eq $dcountry)) {
+		$dcsp = undef;
+	}
+
+	if((!defined($dcountry)) && defined($default_country)) {
+		$default_country = lc($default_country);
+		$dcountry = ucfirst($default_country);
+		if((!defined($dcsp)) && defined($default_subcountry)) {
+			$default_subcountry = lc($default_subcountry);
+			$dcsp = ucfirst($default_subcountry);
+		}
+	}
+
+	# Change surname of a married woman
+	my $sex = $person->get_value('sex');
+	my $maidenname;
+	if(defined($sex) && ($sex eq 'F')) {
+		my $husband = $person->husband();
+		if(defined($husband)) {
+			my $hname = $husband->name();
+			if($hname =~ /(.+)\s*Jr\.?/i) {
+				$hname = $1;
+			}
+			if($hname =~ /(.+)Mc\s+(.+)/) {
+				$hname = "$1$2";
+			}
+			# print $person->name() . " married to $hname\n";
+			if($hname =~ /^.+\s+\/(.+)\/$/) {
+				$maidenname = $lastname;
+				$lastname = lc($1);
+			}
+		}
+	}
+
+	# Remove alternatives - go with the first
+	# TODO: try both alternatives
+	if($lastname =~ /(.+)[\/\\]/) {
+		$lastname = $1;
+	}
+	if($firstname =~ /(.+)[\/\\]/) {
+		$firstname = $1;
+	}
+
+	my %params = (
+		dob => $dob,
+		dod => $dod,
+		dcountry => $dcountry,
+		dcsp => $dcsp,
+		firstname => $firstname,
+		middlename => $middlename,
+		lastname => $lastname,
+		maidenname => $maidenname,
+	);
+
+	my $str = stringify(\%params);
+
+	my $entry;
+
+	# Submit this person to each driver - one driver per site
+	$entry = $lcache->get($str);
+	if((!defined($entry)) || ($entry > 0)) {
+		my %lparams = %params;
+		$lparams{cache} = $lcache;
+		$lparams{mech} = $lmech;
+		lds(\%lparams);
+	}
+}
+
+sub lds {
+	my $params = shift;
+
+	my $dob = $$params{dob};
+	my $dod = $$params{dod};
+	my $dcountry = $$params{dcountry};
+	my $dcsp = $$params{dcsp};
+	my $firstname = $$params{firstname};
+	my $middlename = $$params{middlename};
+	my $lastname = $$params{lastname};
+	my $cache = $$params{cache};
+	my $str = stringify($params);
+	my $m = $$params{mech};
+
+	my $r;
+
+	unless($m->back()) {
+		# HTTP::Response object
+		$r = $m->get('http://www.familysearch.org');
+		unless($r->is_success) {
+			warn 'familysearch.org: ' . $r->status_line . "\n";
+			return;
+		}
+	}
+
+	my %fields = (
+		givenname => $firstname,
+		surname => $lastname,
+	);
+
+	if($dob) {
+		$fields{any_year_from} = $dob;
+	}
+	if($dod) {
+		$fields{any_year_to} = $dod;
+	}
+
+	if($middlename) {
+		$fields{givenname} .= " $middlename";
+	}
+
+	if($dcsp) {
+		$fields{any_place} = $dcsp;
+		$fields{'exact-any_place'} = 1;
+	} elsif($dcountry) {
+		$fields{any_place} = $dcountry;
+		$fields{'exact-any_place'} = 1;
+	}
+
+	$r = $m->submit_form(
+		form_number => 2,
+		fields => \%fields,
+	);
+	unless($r->is_success) {
+		warn 'lds: ' . stringify($params) . ': ' . $r->status_line . "\n";
+		return;
+	}
+	if($r->content =~ /No records found for /) {
+		$cache->set($str, 0);
+		return;
+	}
+
+	my $e = HTML::SimpleLinkExtor->new($r->base);
+	$e->remove_tags('img', 'script');
+	$e->parse($r->content);
+
+	my $count = 0;
+	foreach my $link ($e->links) {
+		my $match = 0;
+		print "$link\n";
+	}
+	$cache->set($str, $count);
+}
+
+# Pretty print a person
+sub stringify {
+	my $params = shift;
+
+	my $dob = $$params{dob};
+	my $dod = $$params{dod};
+	my $dcsp = $$params{dcsp};
+	my $dcountry = $$params{dcountry};
+	my $firstname = $$params{firstname};
+	my $lastname = $$params{lastname};
+	my $middlename = $$params{middlename};
+	my $maidenname = $$params{maidenname};
+
+	my $rc = ucfirst($lastname);
+
+	if($firstname) {
+		my $f = ucfirst($firstname);
+		$rc .= ", $f";
+		if($middlename) {
+			$f = ucfirst($middlename);
+			$rc .= " $f";
+		}
+	}
+
+	if($maidenname && ($maidenname ne $lastname)) {
+		my $m = ucfirst($maidenname);
+		$rc .= " (nee $m)";
+	}
+
+	if($dcountry) {
+		if($dcsp) {
+			unless(length($dcsp) == 2) {
+				$dcsp = ucfirst(lc($dcsp));
+			}
+			$rc .= " ($dcsp, $dcountry)";
+		} else {
+			$rc .= " ($dcountry)";
+		}
+	}
+
+	$rc .= ' ';
+
+	if($dob) {
+		$rc .= $dob;
+	}
+
+	$rc .= '-';
+
+	if($dod) {
+		$rc .= "$dod";
+	}
+
+	return $rc;
+}
+
+# Parse the location field and try to extract country and state of death to
+# optimise the burial site look-up
+sub check_country {
+	my $args = shift;
+
+	my $country = $$args{country};
+
+	if($country eq 'UK') {
+		return 'England', undef;
+	}
+
+	if(($country =~ /England/) ||
+	   ($country eq 'Wales') ||
+	   ($country eq 'Scotland')) {
+		return $country, undef;
+	}
+
+	if(($country eq 'Kent') ||
+	   ($country =~ /Sussex$/) ||
+	   ($country eq 'Essex') ||
+	   ($country eq 'Surrey') ||
+	   ($country eq 'London') ||
+	   ($country eq 'Berkshire') ||
+	   ($country =~ /Yorkshire/) ||
+	   ($country eq 'Norfolk') ||
+	   ($country eq 'Lancashire') ||
+	   ($country eq 'Suffolk') ||
+	   ($country eq 'Middlesex') ||
+	   ($country eq 'Gloucestershire') ||
+	   ($country eq 'Hertfordshire') ||
+	   ($country eq 'Derbyshire') ||
+	   ($country =~ /Durham$/) ||
+	   ($country eq 'Dorset') ||
+	   ($country eq 'Shropshire') ||
+	   ($country eq 'Devon') ||
+	   ($country eq 'Cornwall') ||
+	   ($country eq 'Lincolnshire') ||
+	   ($country eq 'Warwickshire') ||
+	   ($country eq 'Buckinghamshire') ||
+	   ($country eq 'Wiltshire') ||
+	   ($country eq 'Somerset') ||
+	   ($country eq 'Northumberland') ||
+	   ($country eq 'Leicestershire') ||
+	   ($country eq 'Cambridgeshire') ||
+	   ($country eq 'Northamptonshire') ||
+	   ($country =~ /Isle of Wight/i) ||
+	   ($country eq 'Nottinghamshire') ||
+	   ($country eq 'Merseyside') ||
+	   ($country eq 'Cheshire') ||
+	   ($country eq 'Staffordshire') ||
+	   ($country eq 'Oxfordshire') ||
+	   ($country eq 'Hampshire')) {
+		return 'England', $country;
+	}
+
+	if(($country =~ /Glamorgan/) ||
+	   ($country eq 'Clywd')) {
+		return 'Wales', $country;
+	}
+
+	if($country eq 'NZ') {
+		return 'New Zealand', undef;
+	}
+
+	my $csp = $$args{csp};
+	$csp ||= $country;
+
+	if(($csp eq 'Tasmania') ||
+	   ($csp eq 'South Australia') ||
+	   ($csp eq 'Western Australia') ||
+	   ($csp =~ /NSW/)) {
+		return 'Australia', $csp;
+	}
+
+	if($country =~ /France/) {
+		return 'France', undef;
+	}
+
+	my $s = us_state($csp);
+	if($s) {
+		return 'United States', $s;
+	}
+	if($$args{default_country} =~ /United States/i) {
+		# Probably no country given and the state has therefore ended
+		# in the country field
+		$s = us_state($country);
+		if($s) {
+			return 'United States', $s;
+		}
+		# Handle "Foo Florida; as well as Foo, Florida"
+		my $c = $country;
+		if($c =~ /\s(.+)?/) {
+			$s = us_state($1);
+			if($s) {
+				return 'United States', $s;
+			}
+		}
+	}
+	if(($country =~ /USA$/) ||
+	   ($country eq 'America')) {
+		return 'United States', undef;
+	}
+
+	my $canada = Locale::SubCountry->new('CA');
+
+	if($canada->code($csp) ne 'unknown') {
+		return 'Canada', $canada->code($csp);
+	}
+	if($canada->full_name(uc($csp)) ne 'unknown') {
+		return 'Canada', uc($csp);
+	}
+
+	local $SIG{__WARN__} = sub { die $_[0] };
+
+	eval {
+		my $country = Locale::Object::Country->new(name => $country);
+	};
+	if($@) {
+		return;
+	}
+	return $country, $csp;
+}
+
+# Returns the full name of the given US state
+sub us_state {
+	my $csp = shift;
+
+	my $us = Locale::US->new();
+	if(exists($us->{code2state}{uc($csp)})) {
+		# Two letter postal abbreviation
+		return $us->{code2state}{uc($csp)};
+	}
+	if(exists($us->{state2code}{uc($csp)})) {
+		return $csp;
+	}
+}
+
+# Returns the 2 letter postal code of the given US state
+sub us_2letter {
+	my $csp = shift;
+
+	my $us = Locale::US->new();
+	if(exists($us->{code2state}{uc($csp)})) {
+		return $csp;
+	}
+	if(exists($us->{state2code}{uc($csp)})) {
+		# Two letter postal abbreviation
+		return $us->{state2code}{uc($csp)};
+	}
+}
