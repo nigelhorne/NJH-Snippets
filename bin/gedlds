@@ -108,7 +108,7 @@ getopts('c:s:', \%opts);
 my $default_country = $opts{c};
 my $default_subcountry = $opts{s};
 
-die "Usage: gedgrave [ -c default-country-of-death ] [ -s default-subcountry-of-death ] filename\n" unless($ARGV[0]);
+die "Usage: $0 [ -c default-country-of-death ] [ -s default-subcountry-of-death ] filename\n" unless($ARGV[0]);
 
 my $ged = Gedcom->new(gedcom_file => $ARGV[0], read_only => 1);
 
@@ -116,7 +116,7 @@ HTTP::Cache::Transparent::init( {
 	BasePath => '/tmp/cache/http-cache-transparent',
 	# Verbose => 1,
 	NoUpdate => 60 * 60,
-	MaxAge => 15 * 24} ) || die "gedgrave/cache: $!";
+	MaxAge => 15 * 24} ) || die "$0/cache: $!";
 
 # Gedcoms exported by ancestry.co.uk fail this...
 # die "Invalid gedcom file $ARGV[0]\n" unless($ged->validate());
