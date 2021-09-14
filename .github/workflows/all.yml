@@ -1,3 +1,5 @@
+---
+
 on:
   push:
     branches:
@@ -11,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: ['windows-latest', 'macos-latest', 'ubuntu-latest']
-        perl: [ '5.30', '5.28' ]
+        perl: ['5.30', '5.28']
     name: Perl ${{ matrix.perl }} on ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v1
@@ -29,4 +31,4 @@ jobs:
           perl -c -Ilib lib/NJH/Snippets/DB.pm
           perl -c -Ilib -MO=Lint lib/NJH/Snippets/DB.pm
           perl -c -Ilib -Mwarnings::unused lib/NJH/Snippets/DB.pm
-	  cd t && prove ./db
+          cd t && prove ./db
