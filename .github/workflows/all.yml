@@ -29,3 +29,4 @@ jobs:
           perl -c -Ilib lib/NJH/Snippets/DB.pm
           perl -c -Ilib -MO=Lint lib/NJH/Snippets/DB.pm
           perl -c -Ilib -Mwarnings::unused lib/NJH/Snippets/DB.pm
+	  cd t && prove ./db

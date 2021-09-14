@@ -1,0 +1,14 @@
+#!/usr/bin/env perl
+
+use Test::Most tests => 2;
+no lib '.';
+use lib 'lib';
+use lib '../lib';
+
+use NJH::Snippets::DB::people;
+
+NJH::Snippets::DB::init(directory => './databases');
+
+my $people = new_ok('NJH::Snippets::DB::people' => [ no_entry => 1 ]);
+
+ok($people->column2(column1 => 'Nigel') eq 'Horne');
