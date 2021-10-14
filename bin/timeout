@@ -1,0 +1,264 @@
+#!/usr/bin/env perl
+
+# https://www.tek-tips.com/viewthread.cfm?qid=1585900
+
+use strict;
+use warnings;
+
+my @needfull;
+
+BEGIN {
+	if($] >= 5.016) {
+		use open qw(:std :utf8);
+		# if($] >= 5.032) {
+			# no feature qw(indirect);
+		# }
+		# if($] >= 5.020) {
+			# use feature qw(signatures);
+			# no warnings qw(experimental::signatures);
+		# }
+		# use autodie qw(:all);	# Don't enable, since the kill failing isn't caught
+	}
+
+	# Install Pre-requisites
+	my @modules = (
+		'Config', 'Sys::Syslog',
+		'Getopt::Std',
+	);
+	if(($^O ne 'MSWin32') && ($^O ne 'solaris')) {
+		push @modules, 'BSD::Resource',
+	}
+	if($^O ne 'cygwin') {
+		push @modules, 'Sys::CpuLoad',
+	}
+	foreach my $module(@modules) {
+		eval "use $module";
+		if($@) {
+			push @needfull, $module;
+		}
+	}
+	if(scalar(@needfull)) {
+		system('cpan -i ' . join(' ', @needfull));
+	}
+}
+
+if($^O eq 'MSWin32') {
+	push @needfull, 'BSD_Resource_NULL',
+}
+
+foreach my $module(@needfull) {
+	my $version;
+	if($module =~ /(.+)\s(.+)$/) {
+		$module = $1;
+		$version = $2;
+	}
+	if($module =~ /.+\/(.+)/) {
+		$module = $1;
+	}
+	eval "require $module";
+	if($@) {
+		die $@;
+	}
+	$module->import();
+	# if($version && ($module::VERSION < $version)) {
+		# die "$module: need $version got ", $module::VERSION;
+	# }
+}
+
+my $child;
+
+END {
+	if($child) {
+		kill 'CONT', -$child;
+		Sys::Syslog::syslog('warning', "smoker: killing dangling child $child");
+		Sys::Syslog::closelog();
+		sleep 2;
+		kill 'TERM', -$child;
+		sleep 2;
+		kill 'KILL', -$child;
+	}
+}
+
+my $mode;
+
+# Work out the best way to run commands
+# Generally Proc::Killfam is better to use since all children will be killed,
+#	I'm not persuaded that happens with Proc::Govern
+if(($Config{'osname'} eq 'solaris') ||
+   # ($Config{'osname'} eq 'cygwin') ||
+   ($Config{'osname'} eq 'MSWin32') ||
+   ($Config{'osname'} eq 'dragonfly') ||
+   ($Config{'osname'} eq 'haiku') ||
+   ($Config{'osname'} eq 'gnukfreebsd')) {
+	$mode = 'cmd';
+} elsif(($Config{'osname'} ne 'cygwin') && defined($^V) && ($^V ge 'v5.10.1')) {
+	# Doesn't needs at least Perl 5.10.1
+	$mode = 'govern';
+} else {
+	$mode = 'killfam';
+}
+
+@needfull = ();
+my @modules;
+
+if($mode eq 'cmd') {
+	@modules = ( 'IPC::Cmd' );
+} elsif($mode eq 'govern') {
+	@modules = ( 'Proc::Govern', 'Proc::Killfam', 'Unix::Uptime' );
+} elsif($mode eq 'killfam') {
+	@modules = ( 'Proc::Killfam' );
+}
+
+my %opts;
+getopts('dfiv', \%opts);
+
+if($opts{'v'}) {
+	push @modules, 'Data::Dumper';
+}
+
+foreach my $module(@modules) {
+	eval "require $module";
+	if($@) {
+		push @needfull, $module;
+	} else {
+		$module->import();
+	}
+}
+if(scalar(@needfull)) {
+	system('cpan -i ' . join(' ', @needfull));
+}
+
+foreach my $module(@modules) {
+	my $version;
+	if($module =~ /(.+)\s(.+)$/) {
+		$module = $1;
+		$version = $2;
+	}
+	if($module =~ /.+\/(.+)/) {
+		$module = $1;
+	}
+	eval "require $module";
+	if($@) {
+		die $@;
+	}
+	$module->import();
+	# if($version && ($module::VERSION < $version)) {
+		# die "$module: need $version got ", $module::VERSION;
+	# }
+}
+
+print "Mode: $mode\n" if($opts{'v'});
+my $timeout = shift @ARGV;
+timed_system($timeout, @ARGV);
+
+# http://www.perlmonks.org/?node_id=324176
+sub timed_system {
+	my $timeout = shift;
+	my @command;
+
+	my $shell = $ENV{'SHELL'} || $CPAN::Config->{'shell'} || 'bash';
+
+	my $command = join(' ', @_);
+
+	if($opts{'v'}) {
+		@command = ($shell, '-xc', $command);
+	} else {
+		@command = ($shell, '-c', $command);
+	}
+
+	if($mode eq 'govern') {
+		my %args = (
+			name => 'testwrapper',
+			command => \@command,
+			timeout => $timeout,
+			killfam => 1,
+			on_multiple_instance => 'exit',
+			show_stdout => 1,
+			show_stderr => 1,
+		);
+
+		print Data::Dumper->new([\%args])->Dump() if($opts{'v'});
+
+		return Proc::Govern::govern_process(%args);
+	}
+
+	if($mode eq 'killfam') {
+		my $rc = -1;
+		eval {
+			$child = fork;
+
+			die "Fork failed: $!" unless defined $child;
+
+			unless ($child) {
+				if($opts{'v'}) {
+					print "$shell -xc $command\n";
+					exec $shell, '-xc', $command;
+				} else {
+					print "$shell -c $command\n";
+					exec $shell, '-c', $command;
+				}
+				die "$command: exec failed: $!";
+			}
+
+			local $SIG{ALRM} = $SIG{TERM} = $SIG{INT} = sub {
+				syslog 'warning', "smoker: timeout killing child $child";
+				if($opts{'v'}) {
+					print "Killing process family $child\n";
+				}
+				my @pidlist = ($child);
+				Proc::Killfam::killfam('CONT', @pidlist);
+				sleep 2;
+				Proc::Killfam::killfam('ALRM', @pidlist);
+				sleep 2;
+				Proc::Killfam::killfam('TERM', @pidlist);
+				sleep 2;
+				Proc::Killfam::killfam('KILL', @pidlist);
+				sleep 2;
+				kill 'CONT', -$child;
+				sleep 2;
+				kill 'CONT', $child;
+				sleep 2;
+				kill 'ALRM', $child;
+				sleep 2;
+				kill 'TERM', $child;
+				sleep 2;
+				kill 'KILL', $child;
+				sleep 2;
+
+				if(kill(0, $child)) {
+					syslog 'warning', "smoker: $child won't die";
+					die "Timeout! $child Won't die";
+				}
+				# die "Timeout!"
+
+				nohang();
+			}; # Just TERM.
+
+			alarm $timeout;
+
+			$rc = (waitpid($child, 0) == $child) ? $? : -1;
+
+			alarm 0;
+
+			if(kill(0, $child)) {
+				my @pidlist = ($child);
+				Proc::Killfam::killfam('CONT', @pidlist);
+				sleep 2;
+				Proc::Killfam::killfam('ALRM', @pidlist);
+				sleep 2;
+				Proc::Killfam::killfam('TERM', @pidlist);
+				sleep 2;
+				Proc::Killfam::killfam('KILL', @pidlist);
+				sleep 2;
+				kill 9, $child;
+			}
+			$child = 0;
+			# TODO
+			# Elsif $rc != -1 - insert code like System module
+		};
+		return -1 if $@ && $@ !~ /^Timeout!/;
+
+		return $rc;
+	}
+	return IPC::Cmd::run(command => \@command, timeout => $timeout, verbose => $opts{'v'});
+}
