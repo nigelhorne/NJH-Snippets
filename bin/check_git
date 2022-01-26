@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+cd ~/src/njh
+
+for i in *; do
+	echo $i:::::: && cd ~/src/njh/$i && git status
+done
