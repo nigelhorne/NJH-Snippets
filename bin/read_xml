@@ -5,7 +5,7 @@ use warnings;
 use XML::LibXML::Reader;
 
 my $reader = XML::LibXML::Reader->new(location => '../lib/people.xml')
-	or die "cannot read file.xml\n";
+	or die 'cannot read file.xml';
 
 my $node;
 my $key;
