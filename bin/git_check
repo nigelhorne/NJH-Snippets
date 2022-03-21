@@ -7,3 +7,8 @@ cd ~/src/njh
 for i in *; do
 	echo $i:::::: && cd ~/src/njh/$i && git status
 done
+
+cd ~/src
+for i in $(find . -type d -name .git | sed s/\\/.git$//); do
+	cd ~/src/$i && git pull
+done
