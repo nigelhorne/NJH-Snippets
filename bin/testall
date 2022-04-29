@@ -6,6 +6,7 @@ cd ~/src
 for i in $(find . -type d -name .git | sed s/\\/.git$//); do
         cd ~/src/$i
 	if [ -f Makefile.PL ]; then
-		git pull && perl Makefile.PL && make && make test AUTHOR_TESTING=1
+		git pull
+		perlbrew exec 'perl Makefile.PL && make && make test AUTHOR_TESTING=1'
 	fi
 done
