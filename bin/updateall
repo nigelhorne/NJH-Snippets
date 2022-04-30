@@ -2,6 +2,7 @@
 
 set -e
 
+cd ~/src
 for i in $(find . -type d -name .git | sed s/\\/.git$//); do
         cd ~/src/$i && git pull
 done
