@@ -2,11 +2,14 @@
 
 set -e
 
+export AUTOMATED_TESTING=1 AUTHOR_TESTING=1
+
+
 cd ~/src
 for i in $(find . -type d -name .git | sed s/\\/.git$//); do
         cd ~/src/$i
 	if [ -f Makefile.PL ]; then
 		git pull
-		perlbrew exec 'perl Makefile.PL && make && make test AUTHOR_TESTING=1'
+		perlbrew exec 'perl Makefile.PL && make && make test'
 	fi
 done
