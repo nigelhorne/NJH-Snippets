@@ -2,8 +2,7 @@
 
 set -e
 
-export AUTOMATED_TESTING=1 AUTHOR_TESTING=1
-
+export AUTOMATED_TESTING=1 AUTHOR_TESTING=1 NO_NETWORK_TESTING=1
 
 cd ~/src
 for i in $(find . -type d -name .git | sed s/\\/.git$//); do
