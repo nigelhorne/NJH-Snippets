@@ -1,5 +1,11 @@
 package NJH::Snippets::DB;
 
+=head1
+
+NJH::Snippets::DB
+
+=cut
+
 # Author Nigel Horne: njh@bandsman.co.uk
 # Copyright (C) 2015-2022, Nigel Horne
 
