@@ -6,3 +6,5 @@ cd ~/src
 for i in $(find . -type d -name .git | sed s/\\/.git$//); do
         cd ~/src/$i && git pull
 done
+
+perlbrew exec perl -MCPAN -e 'CPAN::Shell->upgrade'
