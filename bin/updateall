@@ -7,5 +7,5 @@ for i in $(find . -type d -name .git | sed s/\\/.git$// | grep -v spamcop.pl); d
         cd ~/src/$i && git pull
 done
 
-perlbrew exec perl -MCPAN -e 'CPAN::Shell->upgrade'
 perlbrew self-upgrade
+perlbrew exec perl -MCPAN -e 'CPAN::Shell->upgrade'
