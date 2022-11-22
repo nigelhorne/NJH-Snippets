@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+
+# Print the official language in Sri Lanka
+
+use strict;
+use warnings;
+use Locale::Object::Country;
+
+my $l = (Locale::Object::Country->new(code_alpha2 => 'lk')->languages_official)[0];
+
+print $l->name(), "\n";
