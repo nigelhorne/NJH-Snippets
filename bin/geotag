@@ -18,12 +18,20 @@ my @needfull;
 BEGIN {
 	my @modules = (
 		'CHI','File::Basename', 'File::Spec',
+		'Geo::Coder::Bing', 'Geo::Coder::Free',
 		'Geo::Coordinates::DecimalDegrees', 'Image::MetaData::JPEG'
 	);
+
 	foreach my $module(@modules) {
 		eval "use $module";
 		if($@) {
-			push @needfull, $module;
+			# Install module dependancies
+			if($module =~ /(.+)\s/) {
+				# Specific version not satisfied
+				push @needfull, $1;
+			} else {
+				push @needfull, $module;
+			}
 		}
 	}
 	if(scalar(@needfull)) {
@@ -51,6 +59,8 @@ foreach my $module(@needfull) {
 	if($module =~ /.+\/(.+)/) {
 		$module = $1;
 	}
+	$module =~ s/\-/::/g;
+	$module =~ s/\.tar\.gz$//;
 	eval "require $module";
 	if($@) {
 		die $@;
@@ -61,10 +71,8 @@ foreach my $module(@needfull) {
 	# }
 }
 
-use Geo::Coder::Bing;
 use Geo::Coder::CA;
 use Geo::Coder::List;
-use Geo::Coder::Free;
 use Geo::Coder::Free::Local;
 use Geo::Coder::Google;
 use Geo::Coder::GooglePlaces;
