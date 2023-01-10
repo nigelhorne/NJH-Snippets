@@ -37,7 +37,11 @@ BEGIN {
 	if(scalar(@needfull)) {
 		my $list = join(' ', @needfull);
 		print "Installing $list\n";
-		system("cpan -i $list");
+		# system("cpan -i $list");
+		# require 'CPAN';
+		# CPAN->import();
+		# CPAN::Shell->install(@needfull);
+		system('perl -MCPAN -e \'CPAN::Shell->install("' . join('", "', @needfull) . '")\'');
 	}
 
 	# FIXME
