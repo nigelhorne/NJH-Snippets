@@ -1,0 +1,48 @@
+#!/usr/bin/env perl
+
+# Set the UNIX timestamp for a photograph to be the time that it was taken
+
+use warnings;
+use strict;
+use autodie qw(:all);
+
+use Image::MetaData::JPEG;
+use DateTime;
+
+foreach(@ARGV) {
+        doit($_);
+}
+
+sub doit {
+        my $file = shift;
+
+        if(my $image = Image::MetaData::JPEG->new($file)) {
+		my $data = $image->get_Exif_data('IMAGE_DATA');
+	} else {
+		die "$file: ", Image::MetaData::JPEG::Error();
+
+		my $time = $data->{'DateTimeDigitized'}[0];
+
+		if(!defined($time)) {
+			warn "$file: can't find the date in the file";
+			next;
+		}
+		# print ">>>>>>>$time\n";
+
+		my $dt = DateTime->new(
+			year => substr($time, 0, 4),
+			month => substr($time, 5, 2),
+			day => substr($time, 8, 2),
+			hour => substr($time, 11, 2),
+			minute => substr($time, 14, 2),
+			second => substr($time, 17, 2)
+		);
+		# print $dt->dmy(), "\n";
+
+		my $seconds = $dt->epoch();
+		# print "$seconds\n";
+		utime time, $seconds, $file;
+	} else {
+		die "$file: ", Image::MetaData::JPEG::Error();
+	}
+}

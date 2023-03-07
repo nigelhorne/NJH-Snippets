@@ -212,6 +212,6 @@ sub doit {
 			print "\t$location\n";
 		}
 	} else {
-		die "file: ", Image::MetaData::JPEG::Error();
+		die "$file: ", Image::MetaData::JPEG::Error();
 	}
 }
