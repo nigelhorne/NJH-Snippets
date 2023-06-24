@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
-# Print where photographs were taken by looking at the geotag
-#	and reverse geocoding them
+# Take photographs in the given directory hierachy and make links
+# based on the place the photograph was taken
 
 # TODO: Only works with JPEGs
 # Sometimes Image::MetaData::JPEG can't parse files,
@@ -12,14 +12,22 @@ use warnings;
 use strict;
 use autodie qw(:all);
 
+die "Usage: $0 directory" unless($ARGV[0]);
+
+chdir $ARGV[0];
+
 my @needfull;
 
 # Install Pre-requisites
 BEGIN {
 	my @modules = (
-		'CHI','File::Basename', 'File::Spec',
+		'CHI','File::Basename', 'File::Spec', 'File::Util',
 		'Geo::Coder::Bing', 'Geo::Coder::Free',
-		'Geo::Coordinates::DecimalDegrees', 'Image::MetaData::JPEG'
+		'Geo::Coder::CA',
+		'Geo::Coordinates::DecimalDegrees', 'Image::MetaData::JPEG',
+		'Geo::Coder::List', 'Geo::Coder::Free::Local', 'Geo::Coder::Google',
+		'Geo::Coder::GooglePlaces', 'Geo::Coder::OSM', 'Geo::Coder::Postcodes',
+		'Geo::Coder::XYZ', 'LWP::UserAgent::Throttled'
 	);
 
 	foreach my $module(@modules) {
@@ -76,24 +84,14 @@ foreach my $module(@needfull) {
 	# }
 }
 
-use Geo::Coder::CA;
-use Geo::Coder::List;
-use Geo::Coder::Free::Local;
-use Geo::Coder::Google;
-use Geo::Coder::GooglePlaces;
-use Geo::Coder::OSM;
-use Geo::Coder::Postcodes;
-use Geo::Coder::XYZ;
-use LWP::UserAgent::Throttled;
-
 my $cachedir;
 if(my $e = $ENV{'CACHEDIR'}) {
 	$cachedir = File::Spec->catfile($e, basename($0));
 } else {
 	$cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache', basename($0));
 }
-my $geocoder = Geo::Coder::List->new(cache => CHI->new(driver => 'File', root_dir => $cachedir));
-$geocoder->push(Geo::Coder::Free::Local->new());
+my $geocoder = Geo::Coder::List->new(cache => CHI->new(driver => 'File', root_dir => $cachedir))
+	->push(Geo::Coder::Free::Local->new());
 
 my $freegeocoder;
 
@@ -116,6 +114,7 @@ if(0) {
 		# E.g. 'Nebraska, USA'
 		->push({ regex => qr/^[\w\s]+,\s*(UK|England|Canada|USA|US|United States)$/i, geocoder => $freegeocoder });
 }
+
 my $geolocation_key;
 if($ENV{'GMAP_KEY'}) {	# Compatibility with various CPAN modules
 	$geolocation_key = $ENV{'GMAP_KEY'};
@@ -170,12 +169,19 @@ if((my $ckey = $ENV{'YAHOO_CONSUMER'}) && (my $skey = $ENV{'YAHOO_SECRET'})) {
 	$geocoder->push(Geo::Coder::PlaceFinder->new(consumer_key => $ckey, secret_key => $skey, ua => $ua));
 }
 
-foreach(@ARGV) {
+my @sources = File::Util->new()->list_dir('.' => {
+	files_only => 1,
+	recurse => 1,
+});
+
+foreach(@sources) {
 	doit($_);
 }
 
 sub doit {
 	my $file = shift;
+
+	return unless($file =~ /\.jpe?g$/i);
 
 	if(my $image = Image::MetaData::JPEG->new($file)) {
 		my $data = $image->get_Exif_data('GPS_DATA');
@@ -195,7 +201,7 @@ sub doit {
 		if($latNS eq 'S') {
 			$latitude *= -1;
 		}
-		print "$file: $latitude,";
+		# print "$file: $latitude,";
 
 		$degrees = $long[0] / $long[1];
 		if($longEW eq 'W') {
@@ -207,10 +213,35 @@ sub doit {
 		if($longEW =~ /^W/) {
 			$longitude *= -1;
 		}
-		print "$longitude\n";
+		# print "$longitude\n";
 
 		if(my $location = $geocoder->reverse_geocode(latlng => "$latitude,$longitude")) {
-			print "\t$location\n";
+			# print "\t$location\n";
+
+			my @dirs = reverse split(/, /, $location);
+			next unless scalar(@dirs) >= 3;
+			my $breadcrumb = '.';
+			foreach my $dir(@dirs[0..2]) {
+				my $d = File::Spec->catfile($breadcrumb, $dir);
+				if(!-d $d) {
+					print "Making $d\n";
+					mkdir $d;
+				}
+				$breadcrumb = $d;
+			}
+			foreach my $dir(split(/\//, dirname($file))) {
+				my $d = File::Spec->catfile($breadcrumb, $dir);
+				if(!-d $d) {
+					print "Making $d\n";
+					mkdir $d;
+				}
+				$breadcrumb = $d;
+			}
+			my $dest = File::Spec->catfile($breadcrumb, basename($file));
+			if(!-r $dest) {
+				print "linking $file to $dest\n";
+				link $file, $dest;
+			}
 		}
 	} else {
 		die "$file: ", Image::MetaData::JPEG::Error();
