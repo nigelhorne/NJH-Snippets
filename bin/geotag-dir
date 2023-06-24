@@ -221,6 +221,9 @@ sub doit {
 			my @dirs = reverse split(/, /, $location);
 			next unless scalar(@dirs) >= 3;
 			my $breadcrumb = '.';
+			if($dirs[0] eq 'US') {
+				$dirs[0] = 'USA';
+			}
 			foreach my $dir(@dirs[0..2]) {
 				my $d = File::Spec->catfile($breadcrumb, $dir);
 				if(!-d $d) {
