@@ -225,7 +225,9 @@ sub doit {
 				$dirs[0] = 'USA';
 			}
 			foreach my $dir(@dirs[0..2]) {
-				my $d = File::Spec->catfile($breadcrumb, $dir);
+				# uc to avoid more than one directory for the
+				#	same place
+				my $d = File::Spec->catfile($breadcrumb, uc($dir));
 				if(!-d $d) {
 					print "Making $d\n";
 					mkdir $d;
