@@ -237,7 +237,7 @@ sub doit {
 				$location = $1;
 			}
 			if($location =~ /.+, Barnsley, GB$/) {
-				$location = 'BARNSLEY, SOUTH YORKSHIRE, ENGLAND';
+				$location = 'BARNSLEY, SOUTH YORKSHIRE, GB';
 			}
 
 			my @dirs = reverse split(/, /, $location);
