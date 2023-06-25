@@ -29,6 +29,9 @@ BEGIN {
 		'Geo::Coder::GooglePlaces', 'Geo::Coder::OSM', 'Geo::Coder::Postcodes',
 		'Geo::Coder::XYZ', 'LWP::UserAgent::Throttled'
 	);
+	if($ENV{'REDIS_SERVER'}) {
+		push @modules, 'CHI::Driver::Redis';
+	}
 
 	foreach my $module(@modules) {
 		eval "use $module";
@@ -84,35 +87,43 @@ foreach my $module(@needfull) {
 	# }
 }
 
-my $cachedir;
-if(my $e = $ENV{'CACHEDIR'}) {
-	$cachedir = File::Spec->catfile($e, basename($0));
+# Currently Geo::Coder::List doesn't cache reverse lookups, so actually this adds nothing at
+# the moment
+my $cache;
+if(my $redis = $ENV{'REDIS_SERVER'}) {
+        $cache = CHI->new(
+                driver => 'Redis',
+                namespace => 'geotag-dir',
+                server => $redis,
+                l1_cache => { driver => 'RawMemory', global => 1, max_size => 1024*1024 },
+                # debug => $opts{'v'}
+        );
 } else {
-	$cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache', basename($0));
+	my $cachedir;
+	if(my $e = $ENV{'CACHEDIR'}) {
+		$cachedir = File::Spec->catfile($e, basename($0));
+	} else {
+		$cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache', basename($0));
+	}
+	# FIXME: The location of the geo-coding cache should be configurable
+        $cache = CHI->new(
+                driver => 'File',
+                root_dir => $cachedir,
+                l1_cache => { driver => 'RawMemory', global => 1, max_size => 1024*1024 }
+        );
 }
-my $geocoder = Geo::Coder::List->new(cache => CHI->new(driver => 'File', root_dir => $cachedir))
+	
+my $geocoder = Geo::Coder::List->new(cache => $cache)
 	->push(Geo::Coder::Free::Local->new());
-
-my $freegeocoder;
 
 # if(my $oa = $ENV{'OPENADDR_HOME'}) {
 # Reverse geocode of Openaddr not supported
 if(0) {
 	my $oa; #<<<<<<<<<<<<
-	$freegeocoder = Geo::Coder::Free->new(openaddr => $oa);
-	# $geocoder->push({ regex => qr/,[\w\s]+,[\w\s]+$/, geocoder => $freegeocoder });
-	# $geocoder->push({ regex => qr/,\s*(USA|US|United States|Canada|Australia)+$/, geocoder => Geo::Coder::Free::OpenAddresses->new(openaddr => $oa) })
-		# ->push({ regex => qr/^[\w\s\-]+?,[\w\s]+,[\w\s]+?$/, geocoder => Geo::Coder::Free->new() });
-	# US, Canada and Australia are full
-	# Counties and towns in the UK are full
-	$geocoder->push({ regex => qr/,\s*(USA|US|United States|Canada|Australia)\s*$/, geocoder => $freegeocoder })
-		->push({ regex => qr/^([\w\s]+,)?\s*[\w\s]+,\s*[\w\s]+\s*$/, geocoder => $freegeocoder });
+	$geocoder->push(Geo::Coder::Free->new(openaddr => $oa));
 } else {
 	# $freegeocoder = Geo::Coder::Free->new();
-	$freegeocoder = Geo::Coder::Free::MaxMind->new();
-	$geocoder->push({ regex => qr/^[\w\s\-]+?,[\w\s]+,[\w\s]+?$/, geocoder => $freegeocoder })
-		# E.g. 'Nebraska, USA'
-		->push({ regex => qr/^[\w\s]+,\s*(UK|England|Canada|USA|US|United States)$/i, geocoder => $freegeocoder });
+	$geocoder->push(Geo::Coder::Free::MaxMind->new());
 }
 
 my $geolocation_key;
@@ -124,16 +135,16 @@ if($geolocation_key) {
 	$gp_args{'key'} = $geolocation_key;
 	$gp_args{'api_key'} = $geolocation_key;
 
-	$geocoder->push({ limit => 100, regex => qr/(Canada|USA|US|United States)$/i, geocoder => Geo::Coder::CA->new() })
+	$geocoder->push({ limit => 100, geocoder => Geo::Coder::CA->new() })
 		->push(Geo::Coder::OSM->new())
-		->push({ regex => qr/^[\w\s-]+,\s*[\w\s]+,\s*(UK|United Kingdom|England|Wales)$/i, geocoder => Geo::Coder::Postcodes->new() })
+		->push(Geo::Coder::Postcodes->new())
 		->push({ limit => 100, geocoder => Geo::Coder::GooglePlaces->new(%gp_args) })
 		->push({ limit => 200, geocoder => Geo::Coder::XYZ->new()})
 		->push(Geo::Coder::Google->new());
 } else {
-	$geocoder->push({ limit => 100, regex => qr/(Canada|USA|US|United States)$/i, geocoder => Geo::Coder::CA->new() })
-		->push({ regex => qr/^[\w\s-]+,\s*[\w\s]+,\s*(UK|United Kingdom|England|Wales)$/i, geocoder => Geo::Coder::Postcodes->new() })
-		->push(Geo::Coder::OSM->new())
+	$geocoder->push({ limit => 100, geocoder => Geo::Coder::CA->new() })
+		->push(Geo::Coder::Postcodes->new())
+		->push(Geo::Coder::OSM->new());
 		# ->push({ limit => 200, geocoder => Geo::Coder::XYZ->new()})
 		# ->push(Geo::Coder::Google->new())
 		# ->push(Geo::Coder::GooglePlaces->new());
