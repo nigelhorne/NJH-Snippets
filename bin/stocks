@@ -1,0 +1,58 @@
+#!/usr/bin/env perl
+
+# Use finance.yahoo.com to track stocks
+
+use warnings;
+use strict;
+use LWP::UserAgent;
+use Term::ANSIColor;
+# use Data::Dumper;
+
+my $stocks;
+
+foreach ('FAN', 'BYND') {	# TODO: read the list of stocks
+	$stocks->{$_} = ();
+}
+
+while(1) {
+	foreach ('FAN', 'BYND') {
+		doit($_);
+		sleep(1);
+		if(scalar(@{$stocks->{$_}}) >= 10) {
+			# print "$_: ", join(', ', @{$stocks->{$_}}[0..9]), "\n";
+			my @asks = @{$stocks->{$_}}[0..9];
+			print "$_:";
+			foreach my $i(0..8) {
+				print ' ';
+				if($asks[$i] == $asks[$i + 1]) {
+					print $asks[$i];
+				} else {
+					my $colour = ($asks[$i] > $asks[$i + 1]) ? 'green' : 'red';
+					print colored($asks[$i], $colour);
+				}
+			}
+			print "\n";
+			pop @{$stocks->{$_}};
+		}
+	}
+	# print Data::Dumper->new([$stocks])->Dump();
+	sleep(60);
+}
+
+sub doit
+{
+	my $stock = shift;
+	my $url = "https://finance.yahoo.com/quote/$stock?p=$stock&.tsrc=fin-srch";
+
+	my $resp = LWP::UserAgent->new()->get($url);
+	if($resp->is_success()) {
+		if($resp->decoded_content() =~ /Ask<\/span>.+?value">([0-9\.]+) x/mis) {
+			# print "$stock $1\n";
+			unshift @{$stocks->{$stock}}, $1;
+		} else {
+			die "$0: $url: failed to parse content";
+		}
+	} else {
+		die "$0: $url: ", $resp->status_line();
+	}
+}
