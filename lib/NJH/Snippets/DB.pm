@@ -343,7 +343,7 @@ sub selectall_hash {
 			if($self->{'logger'}) {
 				$self->{'logger'}->fatal("selectall_hash $query: argument is not a string");
 			}
-			throw Error::Simple("$query: argument is not a string");
+			throw Error::Simple("$query: argument is not a string: " . ref($arg));
 		}
 		if(!defined($arg)) {
 			my @call_details = caller(0);
