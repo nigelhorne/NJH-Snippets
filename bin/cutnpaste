@@ -1,0 +1,21 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Code::CutNPaste;
+
+my $c = Code::CutNPaste->new(
+	dirs => [ '.' ],
+	renamed_vars => 1,
+	renamed_subs => 1,
+);
+my $dups = $c->duplicates();
+
+foreach my $dup (@{$dups}) {
+	my ($left, $right) = ($dup->left(), $dup->right());
+
+	print $left->line(), ' of ', $left->file(), '->',
+		$right->line(), ' of ', $right->file(), "\n";
+
+	print $dup->report();
+}
