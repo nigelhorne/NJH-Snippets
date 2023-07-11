@@ -4,12 +4,12 @@ use strict;
 use warnings;
 use Code::CutNPaste;
 
-my $c = Code::CutNPaste->new(
+my $dups = Code::CutNPaste->new(
 	dirs => [ '.' ],
 	renamed_vars => 1,
 	renamed_subs => 1,
-);
-my $dups = $c->duplicates();
+	show_warnings => 1,
+)->duplicates();
 
 foreach my $dup (@{$dups}) {
 	my ($left, $right) = ($dup->left(), $dup->right());
