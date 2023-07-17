@@ -1,0 +1,7 @@
+#!/usr/bin/perl
+
+use warnings;
+use strict;
+
+print "\xC4\x8D\n";
+print "\xE4\x8D\n";
