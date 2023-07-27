@@ -1,6 +1,6 @@
 package NJH::Snippets::DB;
 
-=head1
+=head1 NAME
 
 NJH::Snippets::DB
 
