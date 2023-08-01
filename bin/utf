@@ -1,0 +1,15 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use HTML::Entities;
+
+# binmode(STDOUT, ':utf8');
+
+print "\N{U+00E9}\n";	# eacute
+
+print HTML::Entities::decode('&eacute'), "\n";
+
+print "\x{c3a9}\n";	# Complains about Wide character
+
+print "\xc3\xa9\n";
