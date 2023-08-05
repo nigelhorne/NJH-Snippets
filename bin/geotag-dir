@@ -271,6 +271,6 @@ sub doit {
 			}
 		}
 	} else {
-		die "$file: ", Image::MetaData::JPEG::Error();
+		warn "$file: ", Image::MetaData::JPEG::Error();
 	}
 }
