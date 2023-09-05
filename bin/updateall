@@ -12,4 +12,7 @@ done
 # done
 
 perlbrew self-upgrade
+
+exit
+
 perlbrew exec perl -MCPAN -e 'CPAN::Shell->upgrade'
