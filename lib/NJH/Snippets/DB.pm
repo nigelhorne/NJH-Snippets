@@ -67,6 +67,19 @@ our $directory;
 our $logger;
 our $cache;
 
+=head1 SUBROUTINES/METHODS
+
+=head2 new
+
+Create an object to point to a read-only database.
+
+Arguments:
+
+cache => place to store results
+cache_duration => how long to store results in the cache (default is 1 hour)
+
+=cut
+
 sub new {
 	my $proto = shift;
 	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
@@ -84,6 +97,7 @@ sub new {
 		logger => $args{'logger'} || $logger,
 		directory => $args{'directory'} || $directory,	# The directory containing the tables in XML, SQLite or CSV format
 		cache => $args{'cache'} || $cache,
+		cache_duration => $args{'cache_duration'} || '1 hour',
 		table => $args{'table'},	# The name of the file containing the table, defaults to the class name
 		no_entry => $args{'no_entry'} || 0,
 	}, $class;
@@ -406,7 +420,7 @@ sub selectall_hash {
 			push @rc, $href;
 		}
 		if($c && wantarray) {
-			$c->set($key, \@rc, '1 hour');
+			$c->set($key, \@rc, $self->{'cache_duration'});
 		}
 
 		return @rc;
@@ -487,7 +501,7 @@ sub fetchrow_hashref {
 	$sth->execute(@query_args) || throw Error::Simple("$query: @query_args");
 	if($c) {
 		my $rc = $sth->fetchrow_hashref();
-		$c->set($key, $rc, '1 hour');
+		$c->set($key, $rc, $self->{'cache_duration'});
 		return $rc;
 	}
 	return $sth->fetchrow_hashref();
