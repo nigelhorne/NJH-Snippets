@@ -55,7 +55,7 @@ Download and unpack the latest files from https://dist.whosonfirst.org/sqlite/
 
 # LICENSE AND COPYRIGHT
 
-Copyright 2015-2020 Nigel Horne.
+Copyright 2015-2023 Nigel Horne.
 
 This program is released under the following licence: GPL2 for personal use on
 a single computer.
