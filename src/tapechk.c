@@ -212,7 +212,7 @@ char **argv;
 		case TAR:
 			ptr = "";
 			for(;;) {
-				printf("%-*c\r", strlen(ptr) + 2, ' ');
+				printf("%-*c\r", (int)strlen(ptr) + 2, ' ');
 				offset = ftell(ftape);
 				if(offset & 511L) {
 					if(istape) {
