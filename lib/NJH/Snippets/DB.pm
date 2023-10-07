@@ -411,6 +411,9 @@ sub selectall_hash {
 			my @rc = @{$rc};
 			return @rc;
 		}
+		if($self->{'logger'}) {
+			$self->{'logger'}->debug('cache MISS');
+		}
 	}
 
 	if(my $sth = $self->{$table}->prepare($query)) {
