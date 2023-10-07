@@ -200,7 +200,7 @@ char **argv;
 				if((gid_t)header.cpio.c_gid != statb.st_gid)
 					printf("%s: tape group %d file group %d (warning)\n", ptr, header.cpio.c_gid, statb.st_gid);
 				if(header.cpio.c_nlink != statb.st_nlink)
-					printf("%s: tape link count %d file link count %d (warning)\n", ptr, header.cpio.c_nlink, statb.st_nlink);
+					printf("%s: tape link count %d file link count %lu (warning)\n", ptr, header.cpio.c_nlink, statb.st_nlink);
 				if((statb.st_mode&S_IFMT) == S_IFREG)
 					if(!cmp(ptr, ftape, statb.st_size, longfile)) {
 						fprintf(stderr, "tapechk failed on %s\n", ptr);
