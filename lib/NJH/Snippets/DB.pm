@@ -76,6 +76,8 @@ Set some class level defaults.
 
     __PACKAGE__::DB::init(directory => '../databases')
 
+See the documentation for new() to see what variables can be set
+
 =cut
 
 sub init {
@@ -95,6 +97,7 @@ Arguments:
 
 cache => place to store results
 cache_duration => how long to store results in the cache (default is 1 hour)
+directory => where the database file is held
 
 If the arguments are not set, tries to take from class level defaults
 
