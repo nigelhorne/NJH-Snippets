@@ -428,6 +428,8 @@ sub selectall_hash {
 		if($self->{'logger'}) {
 			$self->{'logger'}->debug('cache MISS');
 		}
+	} elsif($self->{'logger'}) {
+		$self->{'logger'}->debug('cache not used');
 	}
 
 	if(my $sth = $self->{$table}->prepare($query)) {
