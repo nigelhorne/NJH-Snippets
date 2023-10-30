@@ -1,6 +1,7 @@
-#!/usr/bin/perl -wT
+#!/usr/bin/env perl
 
 use strict;
+use warnings;
 
 if (eval "require Net::Whois::IANA") {
 	import Net::Whois::IANA;
