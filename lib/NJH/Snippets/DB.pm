@@ -312,7 +312,7 @@ sub _open {
 				}
 				$dbh->func($table, 'XML', $slurp_file, 'xmlsimple_import');
 			} else {
-				throw Error::DB::Open(-file => $slurp_file);
+				throw Error::DB::Open(-file => "$dir/$table");
 			}
 			$self->{'type'} = 'XML';
 		}
