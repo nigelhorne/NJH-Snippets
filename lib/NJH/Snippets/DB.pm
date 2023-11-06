@@ -543,8 +543,6 @@ sub execute {
 		%args = @_;
 	} elsif((scalar(@_) == 1) && !ref($_[0])) {
 		$args{'query'} = shift;
-	} else {
-		Carp::croak('Usage: execute(query => $query)');
 	}
 
 	Carp::croak('Usage: execute(query => $query)') unless(defined($args{'query'}));
