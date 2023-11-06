@@ -137,13 +137,13 @@ sub set_logger {
 		%args = @_;
 	} elsif((scalar(@_) == 1) && !ref($_[0])) {
 		$args{'logger'} = shift;
-	} else {
-		Carp::croak('Usage: execute(query => $query)');
 	}
 
-	$self->{'logger'} = $args{'logger'};
-
-	return $self;
+	if(defined($args{'logger'})) {
+		$self->{'logger'} = $args{'logger'};
+		return $self;
+	}
+	Carp::croak('Usage: execute(query => $query)')
 }
 
 # Open the database.
