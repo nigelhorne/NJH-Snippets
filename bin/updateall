@@ -10,7 +10,7 @@ if(open(my $fin, '-|', 'locate .git')) {
 	foreach my $line(<$fin>) {
 		chomp $line;
 		next unless($line =~ /\.git$/);
-		next unless($line =~ /\Q$home\E/);
+		next unless($line =~ /\Q$home\E\/src/);
 		next unless(-r "$line/config");
 		$line =~ s/\/\.git$//;
 		print "$line\n";
