@@ -1,18 +1,24 @@
-#!/usr/bin/env bash
+#!/usr/bin/perl -w
 
-set -e
+use autodie qw(:all);
+use File::HomeDir;
+use strict;
 
-cd ~/src
-# for i in $(find . -type d -name .git | sed s/\\/.git$// | grep -v spamcop.pl); do
-	# cd ~/src/$i && git pull
-# done
+my $home = File::HomeDir->my_home();
 
-for i in $(locate /.git/config | grep ~/src | sed s/\.git.*//); do
-	cd $i && git pull
-done
+if(open(my $fin, '-|', 'locate .git')) {
+	foreach my $line(<$fin>) {
+		chomp $line;
+		next unless($line =~ /\.git$/);
+		next unless($line =~ /\Q$home\E/);
+		next unless(-r "$line/config");
+		$line =~ s/\/\.git$//;
+		print "$line\n";
+		chdir $line;
+		system('git pull');
+	}
+}
 
-perlbrew self-upgrade
+system('perlbrew self-upgrade');
 
-exit
-
-perlbrew exec perl -MCPAN -e 'CPAN::Shell->upgrade'
+# system("perlbrew exec perl -MCPAN -e 'CPAN::Shell->upgrade'");
