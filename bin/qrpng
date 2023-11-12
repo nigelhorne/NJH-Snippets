@@ -1,0 +1,9 @@
+#!/usr/bin/env perl
+
+# Create a QR code
+
+use strict;
+use warnings;
+use Image::PNG::QRCode 'qrpng';
+
+qrpng(text => 'https://forms.office.com/pages/responsepage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAANAAdA6qa1UOEZEUTE4QkMwMTdWSTVFQ01HSVNHS0ZLNS4u', out => 'qr-code.png');
