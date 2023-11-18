@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-set -e
+set -ex
+
+cd $WHOSONFIRST_HOME
 
 git clone https://github.com/whosonfirst-data/whosonfirst-data-admin-au
 git clone https://github.com/whosonfirst-data/whosonfirst-data-admin-ca
