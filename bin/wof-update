@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# cd $WHOSONFIRST && ./wof-update
+# cd $WHOSONFIRST_HOME && ./wof-update
 
 set -e
 
