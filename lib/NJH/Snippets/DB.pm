@@ -126,8 +126,7 @@ sub new {
 	}, $class;
 }
 
-sub set_logger
-{
+sub set_logger {
 	my $self = shift;
 
 	my %args;
