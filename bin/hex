@@ -1,0 +1,12 @@
+#!/usr/bin/env perl
+
+my $hex = '5ff8b8505ff8b850';
+
+print commify(hex($hex)), "\n";
+print commify(2 ** 63), "\n";
+
+sub commify {
+	my $text = reverse $_[0];
+	$text =~ s/(\d\d\d)(?=\d)(?!\d*\.)/$1,/g;
+	return scalar reverse $text;
+}
