@@ -27,7 +27,7 @@ if($fin) {
 			die 'Try again';
 		}
 		if($line =~ /User .+ not found/) {
-			die "$0: $ARGV[0] user not found";
+			die "$0: $ARGV[0]: user not found";
 		}
 		next if($line =~ /Empty page on/);
 		# print $line;
@@ -35,7 +35,7 @@ if($fin) {
 		$data .= $line;
 	}
 
-	die 'No data received' if((!defined($data)) || (length($data) == 0));
+	die "$0: $ARGV[0]: no data received" if((!defined($data)) || (length($data) == 0));
 	# This fails some times
 	# close $fin;
 
