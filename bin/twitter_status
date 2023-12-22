@@ -6,6 +6,8 @@
 use strict;
 use warnings;
 use autodie qw(:all);
+use open ':std', ':encoding(UTF-8)';
+
 # use Data::Dumper;
 use File::HomeDir;
 use JSON::MaybeXS;
