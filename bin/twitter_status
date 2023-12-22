@@ -1,14 +1,15 @@
 #!/usr/bin/env perl
 
+# Show the recent twitter postings by bbportal
 # https://github.com/bocchilorenzo/ntscraper
 
 use strict;
 use warnings;
 use autodie qw(:all);
-use Data::Dumper;
+# use Data::Dumper;
 use JSON::MaybeXS;
 
-open(my $fin, '-|', 'python3 ./bbportal.py 2> /dev/null');
+open(my $fin, '-|', 'python3 ./twitter_status.py bbportal 2> /dev/null');
 if($fin) {
 	my $data;
 
