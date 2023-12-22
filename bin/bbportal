@@ -13,6 +13,9 @@ if($fin) {
 	my $data;
 
 	while(my $line = <$fin>) {
+		if($line =~ /Fetching error: Instance has been rate limited.Use another instance or try again later./) {
+			die 'Try again';
+		}
 		next if($line =~ /Empty page on/);
 		print $line;
 		chomp $line;
