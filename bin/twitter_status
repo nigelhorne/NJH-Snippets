@@ -25,7 +25,7 @@ if($fin) {
 			die 'Try again';
 		}
 		next if($line =~ /Empty page on/);
-		print $line;
+		# print $line;
 		chomp $line;
 		$data .= $line;
 	}
