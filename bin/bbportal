@@ -1,18 +1,41 @@
 #!/usr/bin/env perl
 
+# https://github.com/bocchilorenzo/ntscraper
+
 use strict;
 use warnings;
 use autodie qw(:all);
+use Data::Dumper;
 use JSON::MaybeXS;
 
 open(my $fin, '-|', 'python3 ./bbportal.py 2> /dev/null');
+if($fin) {
+	my $data;
 
-my @lines;
+	while(my $line = <$fin>) {
+		next if($line =~ /Empty page on/);
+		print $line;
+		chomp $line;
+		$data .= $line;
+	}
+	close $fin;
 
-while(my $line = <$fin>) {
-	next if($line =~ /Empty page on/);
-	print $line;
-	# chomp $line;
-	push @lines, $line;
+	# Fix the JSON
+	$data =~ s/"/\\"/g;
+	$data =~ s/'is-retweet': False, /"is-retweet": "False", /g;
+	$data =~ s/'is-retweet': True, /"is-retweet": "True", /g;
+	$data =~ tr/'/"/;
+
+	# print "$data\n\n\n";
+
+	my @tweets = @{JSON::MaybeXS->new()->utf8()->decode($data)->{'tweets'}};
+
+	# print Data::Dumper->new([\@tweets])->Dump();
+	foreach my $tweet(@tweets) {
+		next if($tweet->{'is-retweet'} eq 'True');
+		# $tweet->{'text'} =~ s/#m$//;
+		print $tweet->{'link'}, ': ', $tweet->{'text'}, "\n";
+	}
+} else {
+	die "./bbportal.py: $!";
 }
-close $fin;
