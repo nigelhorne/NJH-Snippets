@@ -14,6 +14,7 @@ if($fin) {
 
 	while(my $line = <$fin>) {
 		if($line =~ /Fetching error: Instance has been rate limited.Use another instance or try again later./) {
+			close $fin;
 			die 'Try again';
 		}
 		next if($line =~ /Empty page on/);
