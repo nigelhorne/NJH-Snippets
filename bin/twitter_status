@@ -13,7 +13,7 @@ use JSON::MaybeXS;
 die "Usage: $0 account" unless($ARGV[0]);
 
 my $home = File::HomeDir->my_home();
-open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py $ARGV[0] 2> /dev/null");
+open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py $ARGV[0] 2>/dev/null");
 # open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py $ARGV[0]");
 if($fin) {
 	my $data;
@@ -24,23 +24,28 @@ if($fin) {
 			# close $fin;
 			die 'Try again';
 		}
+		if($line =~ /User .+ not found/) {
+			die "$0: $ARGV[0] user not found";
+		}
 		next if($line =~ /Empty page on/);
 		# print $line;
 		chomp $line;
 		$data .= $line;
 	}
+
+	die 'No data received' if((!defined($data)) || (length($data) == 0));
 	# This fails some times
 	# close $fin;
 
-	# Fix the JSON
-	$data =~ s/"/\\"/g;
-	$data =~ s/'is-retweet': False, /"is-retweet": "False", /g;
-	$data =~ s/'is-retweet': True, /"is-retweet": "True", /g;
-	$data =~ tr/'/"/;
+	# print "\n\n\n>>>>>>>>>$data\n\n\n";
 
-	# print "$data\n\n\n";
-
-	my @tweets = @{JSON::MaybeXS->new()->utf8()->decode($data)->{'tweets'}};
+	my @tweets;
+	eval {
+		@tweets = @{JSON::MaybeXS->new()->utf8()->decode($data)->{'tweets'}}
+	};
+	if($@) {
+		die "$@: $data";
+	}
 
 	# print Data::Dumper->new([\@tweets])->Dump();
 	foreach my $tweet(@tweets) {
