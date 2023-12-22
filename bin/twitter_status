@@ -7,11 +7,14 @@ use strict;
 use warnings;
 use autodie qw(:all);
 # use Data::Dumper;
+use File::HomeDir;
 use JSON::MaybeXS;
 
 die "Usage: $0 account" unless($ARGV[0]);
 
-open(my $fin, '-|', "python3 ./twitter_status.py $ARGV[0] 2> /dev/null");
+my $home = File::HomeDir->my_home();
+open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py $ARGV[0] 2> /dev/null");
+# open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py $ARGV[0]");
 if($fin) {
 	my $data;
 
