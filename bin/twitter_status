@@ -15,9 +15,9 @@ use JSON::MaybeXS;
 die "Usage: $0 account" unless($ARGV[0]);
 
 my $home = File::HomeDir->my_home();
-open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py $ARGV[0] 2>/dev/null");
+
 # open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py $ARGV[0]");
-if($fin) {
+if(open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py $ARGV[0] 2>/dev/null")) {
 	my $data;
 
 	while(my $line = <$fin>) {
@@ -56,5 +56,5 @@ if($fin) {
 		print $tweet->{'link'}, ': ', $tweet->{'text'}, "\n";
 	}
 } else {
-	die "./bbportal.py: $!";
+	die "twitter_status.py: $!";
 }

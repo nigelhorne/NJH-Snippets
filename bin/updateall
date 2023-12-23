@@ -13,6 +13,14 @@ if(open(my $fin, '-|', 'locate .git')) {
 		next unless($line =~ /\Q$home\E\/src/);
 		next unless(-r "$line/config");
 		$line =~ s/\/\.git$//;
+
+		# Can't pull because of local changes
+		next if($line eq '/home/njh/src/gedcom-tools');
+		next if($line eq '/home/njh/src/macOS-Simple-KVM');
+
+		# Doesn't exist any more
+		next if($line eq '/home/njh/src/njh/OBG');
+
 		print "$line\n";
 		chdir $line;
 		system('git pull');
