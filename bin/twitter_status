@@ -50,11 +50,12 @@ if(open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py
 	}
 
 	# print Data::Dumper->new([\@tweets])->Dump();
-	foreach my $tweet(@tweets) {
-		next if($tweet->{'is-retweet'} eq 'True');
-		# $tweet->{'text'} =~ s/#m$//;
-		print $tweet->{'link'}, ': ', $tweet->{'text'}, "\n";
-	}
+	# foreach my $tweet(@tweets) {
+		# next if($tweet->{'is-retweet'} eq 'True');
+		# # $tweet->{'text'} =~ s/#m$//;
+		# print $tweet->{'link'}, ': ', $tweet->{'text'}, "\n";
+	# }
+	print JSON::MaybeXS->new->utf8()->encode(\@tweets);
 } else {
 	die "twitter_status.py: $!";
 }
