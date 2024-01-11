@@ -19,7 +19,11 @@ BEGIN {
 	my @modules = (
 		'CHI','File::Basename', 'File::Spec',
 		'Geo::Coder::Bing', 'Geo::Coder::Free',
-		'Geo::Coordinates::DecimalDegrees', 'Image::MetaData::JPEG'
+		'Geo::Coordinates::DecimalDegrees', 'Image::MetaData::JPEG',
+		'Geo::Coder::CA', 'Geo::Coder::List', 'Geo::Coder::Free::Local',
+		'Geo::Coder::Google', 'Geo::Coder::GooglePlaces',
+		'Geo::Coder::OSM', 'Geo::Coder::Postcodes',
+		'Geo::Coder::XYZ', 'LWP::UserAgent::Throttled'
 	);
 
 	foreach my $module(@modules) {
@@ -76,15 +80,6 @@ foreach my $module(@needfull) {
 	# }
 }
 
-use Geo::Coder::CA;
-use Geo::Coder::List;
-use Geo::Coder::Free::Local;
-use Geo::Coder::Google;
-use Geo::Coder::GooglePlaces;
-use Geo::Coder::OSM;
-use Geo::Coder::Postcodes;
-use Geo::Coder::XYZ;
-use LWP::UserAgent::Throttled;
 
 my $cachedir;
 if(my $e = $ENV{'CACHEDIR'}) {
