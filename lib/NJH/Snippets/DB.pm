@@ -1,8 +1,8 @@
-package NJH::Snippets;
+package NJH::Snippets::DB;
 
 =head1 NAME
 
-NJH::Snippets
+NJH::Snippets::DB
 
 =cut
 
@@ -27,9 +27,9 @@ NJH::Snippets
 
 # package MyPackageName::DB::foo;
 
-# use NJH::Snippets;
+# use NJH::Snippets::DB;
 
-# our @ISA = ('NJH::Snippets');
+# our @ISA = ('NJH::Snippets::DB');
 
 # 1;
 
@@ -118,7 +118,7 @@ sub new {
 	my $class = ref($proto) || $proto;
 
 	if(!defined($class)) {
-		# Using NJH::Snippets->new(), not NJH::Snippets::new()
+		# Using NJH::Snippets::DB->new(), not NJH::Snippets::DB::new()
 		carp(__PACKAGE__, ' use ->new() not ::new() to instantiate');
 		return;
 	} elsif($class eq __PACKAGE__) {
