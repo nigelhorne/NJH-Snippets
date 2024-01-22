@@ -5,7 +5,7 @@ NJH::Snippets::DB - database abstraction layer
 # SYNOPSIS
 
 Abstract class giving read-only access to CSV, XML and SQLite databases via Perl without writing any SQL.
-Look for databases in $directory in this order;
+Look for databases in $directory in this order:
 1) SQLite (file ends with .sql)
 2) PSV (pipe separated file, file ends with .psv)
 3) CSV (file ends with .csv or .db, can be gzipped)
@@ -49,8 +49,8 @@ Create an object to point to a read-only database.
 
 Arguments:
 
-cache => place to store results
-cache\_duration => how long to store results in the cache (default is 1 hour)
+cache => place to store results;
+cache\_duration => how long to store results in the cache (default is 1 hour);
 directory => where the database file is held
 
 If the arguments are not set, tries to take from class level defaults
@@ -61,36 +61,40 @@ Pass a class that will be used for logging
 
 ## selectall\_hashref
 
-\# Returns a reference to an array of hash references of all the data meeting
-\# the given criteria
+Returns a reference to an array of hash references of all the data meeting
+the given criteria
 
 ## selectall\_hash
 
-\# Returns an array of hash references
+Returns an array of hash references
 
 ## fetchrow\_hashref
 
-\# Returns a hash reference for one row in a table
-\# Special argument: table: determines the table to read from if not the default,
-\#	which is worked out from the class name
+Returns a hash reference for one row in a table.
+Special argument: table: determines the table to read from if not the default,
+which is worked out from the class name
 
 ## execute
 
-\# Execute the given SQL on the data
-\# In an array context, returns an array of hash refs,
-\#	in a scalar context returns a hash of the first row
+Execute the given SQL on the data.
+In an array context, returns an array of hash refs,
+in a scalar context returns a hash of the first row
 
 ## AUTOLOAD
 
-\# Return the contents of an arbitrary column in the database which match the
-\#	given criteria
-\# Returns an array of the matches, or just the first entry when called in
-\#	scalar context
+\# Time that the database was last updated
 
-\# If the first column if the database is "entry" you can do a quick lookup with
-\#	my $value = $table->column($entry);	# where column is the value you're after
+## AUTOLOAD
 
-\# Set distinct to 1 if you're after a unique list
+Return the contents of an arbitrary column in the database which match the
+given criteria
+Returns an array of the matches, or just the first entry when called in
+scalar context
+
+If the first column if the database is "entry" you can do a quick lookup with
+    my $value = $table->column($entry);	# where column is the value you're after
+
+Set distinct to 1 if you're after a unique list
 
 # AUTHOR
 
