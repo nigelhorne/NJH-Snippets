@@ -82,7 +82,7 @@ in a scalar context returns a hash of the first row
 
 ## AUTOLOAD
 
-\# Time that the database was last updated
+Time that the database was last updated
 
 ## AUTOLOAD
 
@@ -104,4 +104,10 @@ Nigel Horne, `<njh at bandsman.co.uk>`
 
 Copyright 2015-2024 Nigel Horne.
 
-This program is released under the following licence: GPL2
+This program is released under the following licence: GPL2.
+Usage is subject to licence terms.
+The licence terms of this software are as follows:
+Personal single user, single computer use: GPL2
+All other users (for example Commercial, Charity, Educational, Government)
+must apply in writing for a licence for use from Nigel Horne at the
+above e-mail.
