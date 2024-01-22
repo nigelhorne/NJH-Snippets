@@ -2,7 +2,7 @@ package NJH::Snippets::DB;
 
 =head1 NAME
 
-NJH::Snippets::DB
+NJH::Snippets::DB - database abstraction layer
 
 =cut
 
@@ -16,35 +16,8 @@ NJH::Snippets::DB
 #	must apply in writing for a licence for use from Nigel Horne at the
 #	above e-mail.
 
-# Abstract class giving read-only access to CSV, XML and SQLite databases via Perl without writing any SQL.
-# Look for databases in $directory in this order;
-#	SQLite (file ends with .sql)
-#	PSV (pipe separated file, file ends with .psv)
-#	CSV (file ends with .csv or .db, can be gzipped)
-#	XML (file ends with .xml)
-
-# For example, you can access the files in /var/db/foo.csv via this class:
-
-# package MyPackageName::DB::foo;
-
-# use NJH::Snippets::DB;
-
-# our @ISA = ('NJH::Snippets::DB');
-
-# 1;
-
-# You can then access the data using:
-# my $foo = MyPackageName::DB::foo->new(directory => '/var/db');
-# my $row = $foo->fetchrow_hashref(customer_id => '12345);
-# print Data::Dumper->new([$row])->Dump();
-
-# CSV files can have empty lines of comment lines starting with '#', to make them more readable
-
-# If the table has a column called "entry", sorts are based on that
-# To turn that off, pass 'no_entry' to the constructor, for legacy
-# reasons it's enabled by default
-# TODO: Switch that to off by default, and enable by passing 'entry'
-
+# TODO: Switch "entry" to off by default, and enable by passing 'entry'
+#	though that wouldn't be so nice for AUTOLOAD
 # TODO: support a directory hierarchy of databases
 # TODO: consider returning an object or array of objects, rather than hashes
 # TODO:	Add redis database - could be of use for Geo::Coder::Free
@@ -67,6 +40,37 @@ our $directory;
 our $logger;
 our $cache;
 our $cache_duration;
+
+=head1 SYNOPSIS
+
+Abstract class giving read-only access to CSV, XML and SQLite databases via Perl without writing any SQL.
+Look for databases in $directory in this order;
+1) SQLite (file ends with .sql)
+2) PSV (pipe separated file, file ends with .psv)
+3) CSV (file ends with .csv or .db, can be gzipped)
+4) XML (file ends with .xml)
+
+For example, you can access the files in /var/db/foo.csv via this class:
+
+    package MyPackageName::DB::foo;
+
+    use NJH::Snippets::DB;
+
+    our @ISA = ('NJH::Snippets::DB');
+
+    1;
+
+You can then access the data using:
+
+    my $foo = MyPackageName::DB::foo->new(directory => '/var/db');
+    my $row = $foo->fetchrow_hashref(customer_id => '12345);
+    print Data::Dumper->new([$row])->Dump();
+
+CSV files can have empty lines of comment lines starting with '#', to make them more readable
+
+If the table has a column called "entry", sorts are based on that
+To turn that off, pass 'no_entry' to the constructor, for legacy
+reasons it's enabled by default
 
 =head1 SUBROUTINES/METHODS
 
@@ -137,6 +141,12 @@ sub new {
 		no_entry => $args{'no_entry'} || 0,
 	}, $class;
 }
+
+=head2	set_logger
+
+Pass a class that will be used for logging
+
+=cut
 
 sub set_logger
 {
@@ -345,15 +355,25 @@ sub _open {
 	return $self;
 }
 
+=head2	selectall_hashref
+
 # Returns a reference to an array of hash references of all the data meeting
 # the given criteria
+
+=cut
+
 sub selectall_hashref {
 	my $self = shift;
 	my @rc = $self->selectall_hash(@_);
 	return \@rc;
 }
 
+=head2	selectall_hash
+
 # Returns an array of hash references
+
+=cut
+
 sub selectall_hash {
 	my $self = shift;
 	my %params = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
@@ -474,9 +494,14 @@ sub selectall_hash {
 	throw Error::Simple("$query: @query_args");
 }
 
+=head2	fetchrow_hashref
+
 # Returns a hash reference for one row in a table
 # Special argument: table: determines the table to read from if not the default,
 #	which is worked out from the class name
+
+=cut
+
 sub fetchrow_hashref {
 	my $self = shift;
 	my %params = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
@@ -550,9 +575,14 @@ sub fetchrow_hashref {
 	return $sth->fetchrow_hashref();
 }
 
+=head2	execute
+
 # Execute the given SQL on the data
 # In an array context, returns an array of hash refs,
 #	in a scalar context returns a hash of the first row
+
+=cut
+
 sub execute {
 	my $self = shift;
 	my %args;
@@ -594,15 +624,20 @@ sub updated {
 	return $self->{'_updated'};
 }
 
+=head2 AUTOLOAD
+
 # Return the contents of an arbitrary column in the database which match the
 #	given criteria
 # Returns an array of the matches, or just the first entry when called in
 #	scalar context
 
 # If the first column if the database is "entry" you can do a quick lookup with
-#	my $value = $table->column($key);	# where column is the value you're after
+#	my $value = $table->column($entry);	# where column is the value you're after
 
 # Set distinct to 1 if you're after a unique list
+
+=cut
+
 sub AUTOLOAD {
 	our $AUTOLOAD;
 	my $column = $AUTOLOAD;
@@ -718,5 +753,17 @@ sub DESTROY {
 		$table->finish();
 	}
 }
+
+=head1 AUTHOR
+
+Nigel Horne, C<< <njh at bandsman.co.uk> >>
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright 2015-2024 Nigel Horne.
+
+This program is released under the following licence: GPL2
+
+=cut
 
 1;
