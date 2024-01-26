@@ -617,7 +617,7 @@ sub execute {
 	return @rc;
 }
 
-=head2 AUTOLOAD
+=head2 updated
 
 Time that the database was last updated
 
