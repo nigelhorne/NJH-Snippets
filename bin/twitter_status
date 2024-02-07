@@ -46,7 +46,10 @@ if(open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py
 		@tweets = @{JSON::MaybeXS->new()->utf8()->decode($data)->{'tweets'}}
 	};
 	if($@) {
-		die "$@: $data";
+		die "$@: $data"
+	}
+	if(scalar(@tweets) == 0) {
+		die "Found no tweets in $data"
 	}
 
 	# print Data::Dumper->new([\@tweets])->Dump();
