@@ -6,7 +6,11 @@ Code snippets
 
 ## NJH::Snippets::DB
 
-Abstract class giving read-only access to CSV, XML and SQLite databases via Perl without writing any SQL.
+Moved to Database::Abstraction in CPAN.
+Use that - I'll remove this code from here soon.
+
+Abstract class giving read-only access to CSV,
+XML and SQLite databases via Perl without writing any SQL.
 Usually all that's neeeded to access a database called 'bar' is a class declaration such as this:
 
     package Foo::Bar;
