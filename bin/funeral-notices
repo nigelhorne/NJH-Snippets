@@ -1,0 +1,32 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Email::MIME;
+use HTML::LinkExtractor;
+
+my $file;
+while(<STDIN>) {
+	$file .= $_;
+}
+my $e = Email::MIME->new($file);
+
+my $extor = HTML::LinkExtractor->new();
+foreach my $p ($e->subparts()) {
+	next unless($p->content_type() =~ /^text\/html/);
+	my $html = $p->body();
+	$extor->parse(\$html);
+	my @links = @{$extor->links()};
+	foreach my $link(@links) {
+		# print Data::Dumper->new([$link])->Dump();
+		next unless($link->{'tag'} eq 'a');
+		my $text = $link->{'_TEXT'};
+		if($text =~ />(.+)</) {
+			$text = $1;
+		}
+		next unless($link->{'href'} =~ /\/notice\//);
+		print "$text->", $link->{'href'}, "\n";
+		# print Data::Dumper->new([$link])->Dump();
+	}
+}
