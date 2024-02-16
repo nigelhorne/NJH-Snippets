@@ -6,15 +6,18 @@ use Data::Dumper;
 use Email::MIME;
 use HTML::LinkExtractor;
 use Lingua::EN::NameParse;
+use LWP::Simple;
+use JSON::MaybeXS;
 
 my $file;
 while(<STDIN>) {
 	$file .= $_;
 }
 my $e = Email::MIME->new($file);
-
+my $json = JSON->new();
 my $extor = HTML::LinkExtractor->new();
 my $nameparser = Lingua::EN::NameParse->new(extended_titles => 1, initials => 1);
+
 foreach my $p ($e->subparts()) {
 	next unless($p->content_type() =~ /^text\/html/);
 	my $html = $p->body();
@@ -35,7 +38,24 @@ foreach my $p ($e->subparts()) {
 			my $first_name = $name_components{'given_name_1'} // $name_components{'initials_1'};
 			my $middle_name = $name_components{'middle_name'};
 			my $surname = $name_components{'surname_1'};
-			print $text, '->', "$first_name, $surname", '->', $link->{'href'}, "\n";
+			# print $text, '->', "$first_name, $surname", '->', $link->{'href'}, "\n";
+			my $content = get($link->{'href'});
+			if($content =~ /<script\stype="application\/ld\+json">(.+)?<\/script>/m) {
+				$content = decode_json($1);
+				# print Data::Dumper->new([$content])->Dump();
+				# TODO pasrse 'articleBody'
+				my $url = $content->{'url'};
+				my $date = $content->{'datePublished'};
+				print '"', $first_name,
+					'","',
+					'","', $surname,
+					'","',	# age
+					'","',	# place
+					'","', $date,
+					'","', $url,
+					'"', "\n";
+
+			}
 		} else {
 			warn "Can't parse $text";
 		}
