@@ -57,11 +57,14 @@ foreach my $p ($e->subparts()) {
 			my $surname = $name_components{'surname_1'};
 			# print $text, '->', "$first_name, $surname", '->', $link->{'href'}, "\n";
 			my $content = get($link->{'href'});
+			my $age = '';
+			if($content =~ /data\-age="(\d+)"/) {
+				$age = $1;
+			}
 			if($content =~ /<script\stype="application\/ld\+json">(.+)?<\/script>/m) {
 				$content = decode_json($1);
 				# print Data::Dumper->new([$content])->Dump();
 				# TODO parse 'articleBody'
-				my $age = '';
 				if($content->{'articleBody'} =~ /aged\s(\d+)/m) {
 					$age = $1;
 				}
