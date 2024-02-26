@@ -71,11 +71,10 @@ foreach my $p ($e->subparts()) {
 				my $url = $content->{'url'};
 				my $date = $content->{'datePublished'};
 				print '"', $first_name,
-					'","',
-					'","', $surname,
+					'",,"', $surname,
 					'",', $age,
-					',"',	# place
-					'","', $date,
+					# ',"',	# place
+					',,"', $date,
 					'","', $url,
 					'"', "\n";
 
