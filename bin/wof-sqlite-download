@@ -1,7 +1,14 @@
+#!/usr/bin/env bash
+
+set -e
+
 rm -rf *.bz2 *.db
 
 SITE=https://dist.whosonfirst.org/sqlite/
 SITE=https://data.geocode.earth/wof/dist/sqlite/
+export WHOSONFIRST_HOME="${WHOSONFIRST_HOME:-$HOME/src/whosonfirst-sqlite}"
+
+mkdir -p $WHOSONFIRST_HOME && cd $WHOSONFIRST_HOME
 
 for file in `curl -s $SITE | fgrep venue- | fgrep latest.db.bz2 | egrep 'ca-latest|us|au|gb' | awk '{gsub("<[^>]*>", "")}1' | awk "{ print \"$SITE/\"$1\"\" }"`; do
 	echo $file:
