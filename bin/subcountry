@@ -1,0 +1,23 @@
+#!/usr/bin/perl -wT
+
+use strict;
+use warnings;
+use diagnostics;
+
+use Locale::SubCountry;
+
+my $sc = Locale::SubCountry->new('US');
+
+my $code = $sc->full_name('MD');
+
+print "$code\n";
+
+$code = $sc->code('Foo');
+
+print "$code\n";
+
+my $uk = Locale::SubCountry->new('GB');
+
+foreach ($uk->all_full_names()) {
+	print "$_\n";
+}
