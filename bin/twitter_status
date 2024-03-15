@@ -29,6 +29,7 @@ if(open(my $fin, '-|', "python3 $home/src/njh/NJH-Snippets/bin/twitter_status.py
 		if($line =~ /User .+ not found/) {
 			die "$0: $ARGV[0]: user not found";
 		}
+		next if($line =~ /\sunreachable. Trying\s/);
 		next if($line =~ /Empty page on/);
 		# print $line;
 		chomp $line;
