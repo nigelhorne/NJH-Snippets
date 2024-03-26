@@ -8,6 +8,7 @@ use strict;
 use autodie qw(:all);
 
 # use Data::Dumper;
+use File::HomeDir;
 use File::Spec;
 use HTTP::Cache::Transparent;
 use Geo::Coder::OSM;
@@ -16,17 +17,17 @@ use LWP::UserAgent::Throttled;
 die "Usage: $0 gedcom-file" unless($ARGV[0]);
 die 'Set OPENADDR_HOME to enable testing' unless($ENV{'OPENADDR_HOME'});
 
-my $cachedir;
-if(my $e = $ENV{'CACHEDIR'}) {
-	$cachedir = File::Spec->catfile($e, 'http-cache-transparent');
+my $cache_dir;
+if(my $e = $ENV{'CACHE_DIR'}) {
+	$cache_dir = File::Spec->catfile($e, 'http-cache-transparent');
 } else {
-	$cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache', 'http-cache-transparent');
+	$cache_dir = File::Spec->catfile(File::HomeDir->my_home(), '.cache', 'htp-cache-transparent')
 }
 HTTP::Cache::Transparent::init({
-	BasePath => $cachedir,
+	BasePath => $cache_dir,
 	NoUpdate => 60 * 60 * 24,
 	MaxAge => 30 * 24
-}) || die "$0: $cachedir: $!";
+}) || die "$0: $cache_dir: $!";
 
 my $geocoder = Geo::Coder::OSM->new();
 

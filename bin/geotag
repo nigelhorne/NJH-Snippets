@@ -17,7 +17,7 @@ my @needfull;
 # Install Pre-requisites
 BEGIN {
 	my @modules = (
-		'CHI','File::Basename', 'File::Spec',
+		'CHI','File::Basename', 'File::Spec', 'File::HomeDir',
 		'Geo::Coder::Bing', 'Geo::Coder::Free',
 		'Geo::Coordinates::DecimalDegrees', 'Image::MetaData::JPEG',
 		'Geo::Coder::CA', 'Geo::Coder::List', 'Geo::Coder::Free::Local',
@@ -81,13 +81,14 @@ foreach my $module(@needfull) {
 }
 
 
-my $cachedir;
-if(my $e = $ENV{'CACHEDIR'}) {
-	$cachedir = File::Spec->catfile($e, basename($0));
+my $cache_dir;
+if(my $e = $ENV{'CACHE_DIR'}) {
+	$cache_dir = File::Spec->catfile($e, basename($0));
 } else {
-	$cachedir = File::Spec->catfile(File::Spec->tmpdir(), 'cache', basename($0));
+	# $cache_dir = File::Spec->catfile(File::Spec->tmpdir(), 'cache', basename($0));
+	$cache_dir = File::Spec->catfile(File::HomeDir->my_home(), '.cache', basename($0));
 }
-my $geocoder = Geo::Coder::List->new(cache => CHI->new(driver => 'File', root_dir => $cachedir));
+my $geocoder = Geo::Coder::List->new(cache => CHI->new(driver => 'File', root_dir => $cache_dir));
 $geocoder->push(Geo::Coder::Free::Local->new());
 
 my $freegeocoder;
