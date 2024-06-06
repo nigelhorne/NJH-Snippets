@@ -1,0 +1,61 @@
+#!/usr/bin/env perl
+
+# Because ^ means not in perlre, you can't use it to optionally match
+#	the start of a string, which can be a pain
+
+use strict;
+use warnings;
+
+my $str = '9/27/1595';
+
+if($str =~ /[\s\/]\d{4}$/) {
+	print "yes\n";
+} else {
+	print "no\n";
+}
+
+if($str =~ /[^\s\/]\d{4}$/) {
+	print "yes\n";
+} else {
+	print "no\n";
+}
+
+if($str =~ /^|[\s\/]\d{4}$/) {
+	print "yes\n";
+} else {
+	print "no\n";
+}
+
+if($str =~ /^\d{4}$/) {
+	print "yes\n";
+} else {
+	print "no\n";
+}
+
+$str = '1595';
+
+if($str =~ /[\s\/]\d{4}$/) {
+	print "yes\n";
+} else {
+	print "no\n";
+}
+
+# This prints "no" which is disappointing
+if($str =~ /[^\s\/]\d{4}$/) {
+	print "yes\n";
+} else {
+	print "no\n";
+}
+
+# This is the workaround
+if($str =~ /^|[\s\/]\d{4}$/) {
+	print "yes\n";
+} else {
+	print "no\n";
+}
+
+if($str =~ /^\d{4}$/) {
+	print "yes\n";
+} else {
+	print "no\n";
+}
