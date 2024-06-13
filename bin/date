@@ -5,3 +5,10 @@ use warnings;
 use POSIX qw(strftime);
 
 print strftime('%F %T', localtime), "\n";
+
+my $date = '1942 June 9';
+if($date =~ /^(\d{3,4})\s([A-Z]{3,})\s(\d{1,2})$/i) {
+	print "yes\n";
+} else {
+	print "no\n";
+}
