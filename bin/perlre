@@ -59,3 +59,11 @@ if($str =~ /^\d{4}$/) {
 } else {
 	print "no\n";
 }
+
+$str = '1828 ?';
+
+if($str =~ /(.+?)\s?\?$/) {
+	print "yes ($1)\n";
+} else {
+	print "no\n";
+}
