@@ -1,0 +1,24 @@
+#!/usr/bin/perl -wT
+
+use strict;
+use warnings;
+use diagnostics;
+
+my %English = (
+	'hello' => 'hello',
+	'goodbye' => 'goodbye',
+);
+
+my %French = (
+	'hello' => 'bonjour',
+	'goodbye' => 'au revoir',
+);
+
+my %languages = (
+	'English' => \%English,
+	'French' => \%French
+);
+
+my $table = $languages{'French'};
+
+print $$table{'hello'};
