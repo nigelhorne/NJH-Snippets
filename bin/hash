@@ -1,0 +1,9 @@
+#!/usr/bin/env perl
+
+my %hash = (
+	1 => 'one',
+	2 => 'two',
+	1 => 'first',
+);
+
+print $hash{'1'}, "\n";
