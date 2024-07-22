@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use List::Member;
+
+if(member(304, (300, 302, 303)) >= 0) {
+	print "Yes\n";
+} else {
+	print "No\n";
+}
