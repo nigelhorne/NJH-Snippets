@@ -3,5 +3,6 @@
 if [ x$PAGER != 'x' ]; then
 	perl -MComment::Spell -e "Comment::Spell->new->parse_from_file(q[$1])" | ispell -a | egrep -v '^\*$' | egrep -v '^$' | $PAGER
 else
-	perl -MComment::Spell -e "Comment::Spell->new->parse_from_file(q[$1])" | ispell -a | egrep -v '^\*$' | egrep -v '^$'
+	# perl -MComment::Spell -e "Comment::Spell->new->parse_from_file(q[$1])" | ispell -a | egrep -v '^\*$' | egrep -v '^$'
+	perl -MComment::Spell -e "Comment::Spell->new->parse_from_file(q[$1])" | aspell -a | egrep '^&'
 fi
