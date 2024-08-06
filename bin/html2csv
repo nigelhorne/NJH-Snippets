@@ -33,6 +33,7 @@ while($text =~ /<tr.*?>(.+?)<\/tr.*?>/sg) {
 		$field =~ s/^\s*&nbsp;$//;
 		$field =~ s/^\s//g;
 		$field =~ s/\s$//g;
+		$field =~ s/<span.*?>(.+?)<\/span.*?>/$1/;
 		if(length($field) == 0) {
 			print '""'
 		} elsif($field =~ /\D/) {
