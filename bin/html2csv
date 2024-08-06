@@ -8,6 +8,7 @@ use warnings;
 use autodie qw(:all);
 
 use File::Slurp;
+use HTML::Entities;
 
 my $text = read_file($ARGV[0]);
 
@@ -35,7 +36,7 @@ while($text =~ /<tr.*?>(.+?)<\/tr.*?>/sg) {
 		if(length($field) == 0) {
 			print '""'
 		} elsif($field =~ /\D/) {
-			print  "\"$field\"";
+			print  '"', decode_entities($field), '"'
 		} else {
 			print "$field"
 		}
