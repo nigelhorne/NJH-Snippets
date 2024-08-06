@@ -1,0 +1,30 @@
+#!/usr/bin/env perl
+
+# Given an HTML file with a table, print that table in CSV format
+# If there are more than one table, use the last one
+
+use strict;
+use warnings;
+use autodie qw(:all);
+
+use File::Slurp;
+
+my $text = read_file($ARGV[0]);
+
+$text =~ s/.+<table.*?>//s;
+$text =~ s/<\/table.*?>.+//s;
+
+# print $text;
+
+while($text =~ /<tr.*?>(.+?)<\/tr.*?>/sg) {
+	my $record = $1;
+	# print $record;
+	while($record =~ /<td.*?>(.+?)<\/td.*?>/sg) {
+		my $field = $1;
+		$field =~ s/\s+/ /g;
+		$field =~ s/<font.*?>(.+?)<\/font.*?>/$1/;
+		$field =~ s/^&nbsp;$//;
+		print  "\"$field\",";
+	}
+	print "\n";
+}
