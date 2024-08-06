@@ -19,12 +19,26 @@ $text =~ s/<\/table.*?>.+//s;
 while($text =~ /<tr.*?>(.+?)<\/tr.*?>/sg) {
 	my $record = $1;
 	# print $record;
+	my $first = 1;
 	while($record =~ /<td.*?>(.+?)<\/td.*?>/sg) {
+		if($first) {
+			$first = 0;
+		} else {
+			print ',';
+		}
 		my $field = $1;
 		$field =~ s/\s+/ /g;
 		$field =~ s/<font.*?>(.+?)<\/font.*?>/$1/;
-		$field =~ s/^&nbsp;$//;
-		print  "\"$field\",";
+		$field =~ s/^\s*&nbsp;$//;
+		$field =~ s/^\s//g;
+		$field =~ s/\s$//g;
+		if(length($field) == 0) {
+			print '""'
+		} elsif($field =~ /\D/) {
+			print  "\"$field\"";
+		} else {
+			print "$field"
+		}
 	}
 	print "\n";
 }
