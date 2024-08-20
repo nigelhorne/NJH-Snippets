@@ -1,0 +1,5 @@
+#!/usr/bin/perl -wT
+
+use URI::Escape;
+
+print uri_escape("<b>foo</b>\n");
