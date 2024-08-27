@@ -1,22 +1,14 @@
-#!/usr/bin/env perl
-# #!/usr/bin/perl -wT
-
-# Print the MX record for the given hostname
-
-use warnings;
-use strict;
-use autodie qw(:all);
+#!/usr/bin/perl -wT
 
 use Net::DNS;
-my $res = Net::DNS::Resolver->new();
-my @mx = mx($res, $ARGV[0]);
+my $res = Net::DNS::Resolver->new;
+foreach (@ARGV) {
+	print "$_:\n";
 
-foreach (@mx) {
-	print "preference = ", $_->preference, ' ';
-	my $ip = $_->exchange();
-	print "exchange = $ip";
-	foreach ($res->search($ip)->answer()) {
-		if($_->type() eq 'A') { print ' ', $_->address };
+	my @mx = mx($res, $_);
+
+	foreach (@mx) {
+		print "\tpreference = ", $_->preference, ' ';
+		print "exchange = ", $_->exchange, "\n";
 	}
-	print "\n";
 }
