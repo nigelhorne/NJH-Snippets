@@ -1,5 +1,9 @@
 #!/usr/bin/env perl
 
+# IO:AIO => libio-aio-perl
+# Test::Needs => libtest-needs-perl
+# Test::Most => libtest-most-perl
+
 use strict;
 use warnings;
 
