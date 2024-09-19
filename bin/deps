@@ -3,6 +3,7 @@
 # IO:AIO => libio-aio-perl
 # Test::Needs => libtest-needs-perl
 # Test::Most => libtest-most-perl
+# XML::Twig => libxml-twig-perl
 
 use strict;
 use warnings;
