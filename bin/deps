@@ -1,9 +1,13 @@
 #!/usr/bin/env perl
 
+# Debian
 # IO:AIO => libio-aio-perl
 # Test::Needs => libtest-needs-perl
 # Test::Most => libtest-most-perl
 # XML::Twig => libxml-twig-perl
+
+# Alpine
+# Test::DescribeMe => perl-test-describeme
 
 use strict;
 use warnings;
