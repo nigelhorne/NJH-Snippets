@@ -1,14 +1,30 @@
-#!/usr/bin/perl -wT
+#!/usr/bin/env perl
 
+# Perform a DNS MX lookup for each domain passed as an argument
+
+use strict;
+use warnings;
 use Net::DNS;
-my $res = Net::DNS::Resolver->new;
-foreach (@ARGV) {
-	print "$_:\n";
 
-	my @mx = mx($res, $_);
+# Initialize DNS resolver
+my $res = Net::DNS::Resolver->new();
 
-	foreach (@mx) {
-		print "\tpreference = ", $_->preference, ' ';
-		print "exchange = ", $_->exchange, "\n";
+# Loop through command line arguments
+foreach my $domain (@ARGV) {
+	print "$domain:\n";
+
+	# Get MX records for the domain
+	my @mx_records = mx($res, $domain);
+
+	# Check if MX records exist
+	if (@mx_records) {
+		# Print each MX record with preference and exchange
+		foreach my $mx_record (@mx_records) {
+			printf "\tpreference = %d, exchange = %s\n",
+			$mx_record->preference(),
+			$mx_record->exchange();
+		}
+	} else {
+		print "\tNo MX records found for $domain\n";
 	}
 }
