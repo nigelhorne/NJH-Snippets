@@ -1,0 +1,20 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Lingua::EN::NameParse;
+
+# Create NameParse object with options
+my $np = Lingua::EN::NameParse->new(
+	extended_titles => 1,
+	initials => 1
+);
+
+# Parse the name and retrieve components
+my $name = 'H Horace Markam';
+$np->parse($name);
+my %components = $np->components();
+
+# Use Dumper to print components directly
+print Dumper(\%components);
