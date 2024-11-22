@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 
+# Process MIDI files and print text within them
+
 use strict;
 use warnings;
 use MIDI;
@@ -9,10 +11,9 @@ foreach my $file (@ARGV) {
 	process_midi_file($file);
 }
 
-# Subroutine to process a MIDI file and print specific text events
 sub process_midi_file
 {
-	my($file) = @_;
+	my $file = shift;
 
 	# Create a new MIDI Opus object from the file
 	my $opus = MIDI::Opus->new({ 'from_file' => $file, 'no_parse' => 0 });
