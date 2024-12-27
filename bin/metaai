@@ -1,0 +1,44 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use HTTP::Tiny;
+use JSON::MaybeXS;
+
+# API configuration
+my $api_url = 'https://api.meta.com/v1/some-endpoint'; # Replace with the actual endpoint
+my $api_key = 'your_meta_api_key'; # Replace with your API key
+
+# Prepare the request payload
+my $payload = {
+    input => 'Hello, Meta AI!',
+    options => {
+        response_format => 'json',
+    }
+};
+
+# Convert payload to JSON
+my $json_payload = encode_json($payload);
+
+# Create HTTP client
+my $http = HTTP::Tiny->new;
+
+# Send POST request
+my $response = $http->post(
+    $api_url,
+    {
+        headers => {
+            'Content-Type'  => 'application/json',
+            'Authorization' => "Bearer $api_key", # Adjust if a different auth method is required
+        },
+        content => $json_payload,
+    }
+);
+
+# Process the response
+if ($response->{success}) {
+    my $content = decode_json($response->{content});
+    print 'Response from Meta AI: ', $content->{output}, "\n"; # Adjust based on API's response structure
+} else {
+    die "Error: $response->{status} $response->{reason}\n";
+}
