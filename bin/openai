@@ -1,0 +1,47 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use HTTP::Tiny;
+use JSON::MaybeXS;
+
+# Replace with your OpenAI API key
+my $api_key = $ENV{'OPENAI_API_KEY'};
+
+# OpenAI API endpoint
+my $url = 'https://api.openai.com/v1/chat/completions';
+
+# Create the HTTP client
+my $http = HTTP::Tiny->new();
+
+# Define the request payload
+my $data = {
+	model => 'gpt-3.5-turbo',
+	messages => [
+		{ role => 'system', content => 'You are a helpful assistant.' },
+		{ role => 'user', content => 'Hello, how can I use ChatGPT with Perl?' }
+	]
+};
+
+# Encode the payload as JSON
+my $json_data = encode_json($data);
+
+# Make the POST request
+my $response = $http->post(
+	$url,
+	{
+		headers => {
+			'Content-Type'  => 'application/json',
+			'Authorization' => "Bearer $api_key"
+		},
+		content => $json_data
+	}
+);
+
+# Check the response
+if ($response->{success}) {
+	my $content = decode_json($response->{content});
+	print 'ChatGPT Response: ' . $content->{choices}[0]{message}{content} . "\n";
+} else {
+	die 'Request failed: ' . $response->{status} . ' ' . $response->{reason};
+}
