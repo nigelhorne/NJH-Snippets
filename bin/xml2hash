@@ -5,8 +5,9 @@
 use strict;
 use warnings;
 
-use XML::Simple;
 use Data::Dumper;
+use File::Slurp;
+use XML::Simple;
 
 # Input XML string
 my $xml_string = <<'END_XML';
@@ -22,6 +23,9 @@ my $xml_string = <<'END_XML';
 	<phone type="mobile">555-5678</phone>
 </root>
 END_XML
+
+# Input XML file
+$xml_string = File::Slurp::read_file($ARGV[0]);
 
 # Create an instance of XML::Simple
 my $xml_parser = XML::Simple->new(ForceArray => 1, KeyAttr => []);
