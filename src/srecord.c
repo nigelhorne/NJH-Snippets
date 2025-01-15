@@ -135,10 +135,10 @@ serial(int argc, const char **argv)
 
 	/* No S0 (header) record is sent */
 
-	if(--argc == 1)
+	if(--argc == 1) {
 		encodeDescriptor(stdin, fileno(stdout), NULL);
 		encodeDescriptor(stdin, fd, NULL);
-	else
+	} else
 		/* Encode data from each specified file */
 		while(--argc > 0) {
 			int rc = encodeFile(*++argv, fd, NULL);
