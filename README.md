@@ -18,7 +18,7 @@ Show where photographs were taken.
 It reads the GPS (geotag) information from a JPG and reverse geo-codes it to
 print the address.
 
-## peek
+## peek.c
 
 Reads input files, converts them to S-records, and sends them 
 to a specified destination via TCP, UDP, or a serial port.
@@ -36,6 +36,10 @@ Download and unpack the latest files from https://dist.whosonfirst.org/bundles/
 ## wof-sqlite-download
 
 Download and unpack the latest files from https://dist.whosonfirst.org/sqlite/
+
+## zlib.c
+
+Sample program for the zlib library.
 
 # LICENSE AND COPYRIGHT
 
