@@ -1,0 +1,33 @@
+#!/usr/bin/env perl
+
+# Convert an XML document into a hash
+
+use strict;
+use warnings;
+
+use XML::Simple;
+use Data::Dumper;
+
+# Input XML string
+my $xml_string = <<'END_XML';
+<root>
+	<name>John Doe</name>
+	<age>30</age>
+	<address>
+		<street>Main St</street>
+		<city>Anytown</city>
+		<zipcode>12345</zipcode>
+	</address>
+	<phone type="home">555-1234</phone>
+	<phone type="mobile">555-5678</phone>
+</root>
+END_XML
+
+# Create an instance of XML::Simple
+my $xml_parser = XML::Simple->new(ForceArray => 1, KeyAttr => []);
+
+# Parse the XML string
+my $hash_ref = $xml_parser->XMLin($xml_string);
+
+# Print the hash structure
+print Dumper($hash_ref);

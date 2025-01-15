@@ -37,6 +37,10 @@ Download and unpack the latest files from https://dist.whosonfirst.org/bundles/
 
 Download and unpack the latest files from https://dist.whosonfirst.org/sqlite/
 
+## xml2hash
+
+Convert an XML document into a hash
+
 ## zlib.c
 
 Sample program for the zlib library.
