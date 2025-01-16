@@ -28,7 +28,7 @@ END_XML
 $xml_string = File::Slurp::read_file($ARGV[0]);
 
 # Create an instance of XML::Simple
-my $xml_parser = XML::Simple->new(ForceArray => 1, KeyAttr => []);
+my $xml_parser = XML::Simple->new(ForceArray => 0, KeyAttr => []);
 
 # Parse the XML string
 my $hash_ref = $xml_parser->XMLin($xml_string);
