@@ -1,0 +1,73 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use LWP::UserAgent;
+use URI::Escape;
+use JSON::MaybeXS;
+
+# Function to query DBpedia for geocoding
+sub query_dbpedia_geocoding {
+	my $location = shift;
+
+	# DBpedia SPARQL endpoint
+	my $endpoint = 'https://dbpedia.org/sparql';
+
+	# SPARQL query to get geocoding information
+	my $sparql = <<"SPARQL";
+PREFIX dbo: <http://dbpedia.org/ontology/>
+PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?place ?lat ?long ?country WHERE {
+  ?place a dbo:Place ;
+         rdfs:label "$location"\@en ;
+         geo:lat ?lat ;
+         geo:long ?long ;
+         dbo:country ?country .
+}
+LIMIT 1
+SPARQL
+
+	# Encode the SPARQL query
+	my $query_url = $endpoint . "?query=" . uri_escape($sparql) . "&format=application/json";
+
+	# Send the request
+	my $ua  = LWP::UserAgent->new;
+	my $res = $ua->get($query_url);
+
+	if ($res->is_success) {
+		my $content = decode_json($res->decoded_content);
+		my $results = $content->{results}{bindings};
+
+		if (@$results) {
+			my $result = $results->[0];
+			return {
+				place   => $result->{place}{value},
+				lat     => $result->{lat}{value},
+				long    => $result->{long}{value},
+				country => $result->{country}{value},
+			};
+		} else {
+			return undef; # No results found
+		}
+	} else {
+		die 'Failed to query DBpedia: ', $res->status_line;
+	}
+}
+
+# Main script
+print "Enter a location name: ";
+chomp(my $location = <STDIN>);
+
+my $geocoding_info = query_dbpedia_geocoding($location);
+
+if ($geocoding_info) {
+	print "\nGeocoding Information for $location:\n";
+	print "Place URI: $geocoding_info->{place}\n";
+	print "Latitude: $geocoding_info->{lat}\n";
+	print "Longitude: $geocoding_info->{long}\n";
+	print "Country URI: $geocoding_info->{country}\n";
+} else {
+	print "No geocoding information found for $location.\n";
+}
