@@ -6,7 +6,8 @@ Code snippets
 
 ## dbpedia_location
 
-# Query DBpedia for Geocoding
+Query DBpedia for Geocoding.
+Also produces OSM HTML.
 
 ## format
 

@@ -1,139 +1,170 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+
 use IO::Socket::SSL;
 use LWP::UserAgent;
 use URI::Escape;
-use JSON;
+use JSON::MaybeXS;
 
 # Function to query DBpedia for geocoding and population
 sub query_dbpedia_geocoding {
-    my ($location, @types) = @_;
+	my ($location, @types) = @_;
 
-    # DBpedia SPARQL endpoint
-    my $endpoint = "https://dbpedia.org/sparql";
+	# DBpedia SPARQL endpoint
+	my $endpoint = 'https://dbpedia.org/sparql';
 
-    # Construct the FILTER clause for types
-    my $filter_types = join(", ", map { "dbo:$_" } @types);
+	# Construct the FILTER clause for types
+	my $filter_types = join(', ', map { "dbo:$_" } @types);
 
-    # SPARQL query to get geocoding and population
-    my $sparql = <<"SPARQL";
+	# SPARQL query to get geocoding and population
+	my $sparql = <<"SPARQL";
 PREFIX dbo: <http://dbpedia.org/ontology/>
 PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
 SELECT ?place ?lat ?long ?country ?population WHERE {
   ?place a ?type ;
-         rdfs:label "$location"\@en ;
-         geo:lat ?lat ;
-         geo:long ?long ;
-         dbo:country ?country .
+		 rdfs:label "$location"\@en ;
+		 geo:lat ?lat ;
+		 geo:long ?long ;
+		 dbo:country ?country .
   FILTER (?type IN ($filter_types))
   OPTIONAL { ?place dbo:populationTotal ?population }
 }
 LIMIT 1
 SPARQL
 
-    # Encode the SPARQL query
-    my $query_url = $endpoint . "?query=" . uri_escape($sparql) . "&format=application/json";
+	# Encode the SPARQL query
+	my $query_url = $endpoint . '?query=' . uri_escape($sparql) . '&format=application/json';
 
-    # Send the request
-    my $ua  = LWP::UserAgent->new;
-        $ua->ssl_opts(
-    SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE, 
-    verify_hostname => 0
+	# Send the request
+	my $ua  = LWP::UserAgent->new;
+		$ua->ssl_opts(
+	SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE, 
+	verify_hostname => 0
 );
-    my $res = $ua->get($query_url);
+	my $res = $ua->get($query_url);
 
-    if ($res->is_success) {
-        my $content = decode_json($res->decoded_content);
-        my $results = $content->{results}{bindings};
+	if ($res->is_success) {
+		my $content = decode_json($res->decoded_content);
+		my $results = $content->{results}{bindings};
 
-        if (@$results) {
-            my $result = $results->[0];
-            return {
-                place      => $result->{place}{value},
-                lat        => $result->{lat}{value},
-                long       => $result->{long}{value},
-                country    => $result->{country}{value},
-                population => $result->{population}{value} // "Unknown",
-            };
-        } else {
-            return undef; # No results found
-        }
-    } else {
-        die "Failed to query DBpedia: " . $res->status_line;
-    }
+		if (@$results) {
+			my $result = $results->[0];
+			return {
+				place	  => $result->{place}{value},
+				lat		=> $result->{lat}{value},
+				long	   => $result->{long}{value},
+				country	=> $result->{country}{value},
+				population => $result->{population}{value} // 'Unknown',
+			};
+		} else {
+			return undef; # No results found
+		}
+	} else {
+		die "Failed to query DBpedia for $location: " . $res->status_line;
+	}
 }
 
-# Function to create an HTML map using Leaflet.js
+# Function to create an HTML map with multiple markers and dynamic zoom
 sub create_html_map {
-    my ($lat, $long, $location, $output_file) = @_;
+	my ($locations, $output_file) = @_;
 
-    my $html_content = <<"HTML";
+	# JavaScript to add markers and fit map bounds
+	my $markers_js = join("\n", map {
+		my $loc = $_;
+		my $color = 'green';
+		if ($loc->{population} ne 'Unknown') {
+			my $pop = $loc->{population};
+			$color = $pop > 1_000_000 ? 'red' : $pop > 500_000 ? 'orange' : 'green';
+		}
+		<<"JS"
+		var marker = L.circleMarker([$loc->{lat}, $loc->{long}], {
+			color: '$color',
+			radius: 10
+		}).addTo(map);
+		marker.bindPopup('<b>$loc->{name}</b><br>Population: $loc->{population}');
+		bounds.extend([$loc->{lat}, $loc->{long}]);
+JS
+	} @$locations);
+
+	my $html_content = <<"HTML";
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Map of $location</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <style>
-        #map { height: 600px; width: 100%; }
-    </style>
+	<title>Map of Locations</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+	<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+	<style>
+		#map { height: 600px; width: 100%; }
+	</style>
 </head>
 <body>
-    <h1>Map of $location</h1>
-    <div id="map"></div>
-    <script>
-        var map = L.map('map').setView([$lat, $long], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-        L.marker([$lat, $long]).addTo(map)
-            .bindPopup('<b>$location</b>')
-            .openPopup();
-    </script>
+	<h1>Map of Locations</h1>
+	<div id="map"></div>
+	<script>
+		var map = L.map('map');
+		var bounds = L.latLngBounds([]);
+
+		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			maxZoom: 19,
+			attribution: '© OpenStreetMap contributors'
+		}).addTo(map);
+
+		$markers_js
+
+		// Fit map to markers
+		map.fitBounds(bounds);
+	</script>
 </body>
 </html>
 HTML
 
-    open my $fh, '>', $output_file or die "Cannot open file '$output_file': $!";
-    print $fh $html_content;
-    close $fh;
-    print "Map saved to $output_file. Open it in your browser to view.\n";
+	open my $fh, '>', $output_file or die "Cannot open file '$output_file': $!";
+	print $fh $html_content;
+	close $fh;
+	print "Map saved to $output_file. Open it in your browser to view.\n";
 }
 
 # Main script
-print "Enter a location name: ";
-chomp(my $location = <STDIN>);
+print 'Enter locations (semicolon-separated): ';
+chomp(my $locations_input = <STDIN>);
 
-print "Enter place types to search (comma-separated, e.g., City,Town,Country): ";
+print 'Enter place types to search (comma-separated, e.g., City,Town,Country): ';
 chomp(my $types_input = <STDIN>);
 
 # Default to "City" if no types are provided
 if ($types_input =~ /^\s*$/) {
-    print "No types specified. Defaulting to 'City'.\n";
-    $types_input = "City";
+	print "No types specified. Defaulting to 'City'.\n";
+	$types_input = 'City';
 }
 
-# Split types and trim whitespace
-my @types = map { s/^\s+|\s+$//g; $_ } split(",", $types_input);
+# Split inputs and trim whitespace
+my @locations = map { s/^\s+|\s+$//g; $_ } split(';', $locations_input);
+my @types	 = map { s/^\s+|\s+$//g; $_ } split(',', $types_input);
 
-# Query DBpedia
-my $geocoding_info = query_dbpedia_geocoding($location, @types);
+my @geocoding_results;
+foreach my $location (@locations) {
+	my $geocoding_info = query_dbpedia_geocoding($location, @types);
+	if ($geocoding_info) {
+		push @geocoding_results, {
+			name	   => $location,
+			lat		=> $geocoding_info->{lat},
+			long	   => $geocoding_info->{long},
+			population => $geocoding_info->{population},
+		};
+	} else {
+		print "Warning: No geocoding data found for $location.\n";
+	}
+}
 
-if ($geocoding_info) {
-    print "\nGeocoding Information for $location:\n";
-    print "Latitude: $geocoding_info->{lat}\n";
-    print "Longitude: $geocoding_info->{long}\n";
-
-    # Generate HTML map
-    my $output_file = "map_of_$location.html";
-    create_html_map($geocoding_info->{lat}, $geocoding_info->{long}, $location, $output_file);
+if (@geocoding_results) {
+	# Generate HTML map with all results
+	my $output_file = 'map_of_locations.html';
+	create_html_map(\@geocoding_results, $output_file);
 } else {
-    print "No geocoding information found for $location.\n";
+	print "No valid geocoding data found for any of the specified locations. Exiting.\n";
 }
-
