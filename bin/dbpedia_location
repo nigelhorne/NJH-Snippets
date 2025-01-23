@@ -39,11 +39,11 @@ SPARQL
 	my $query_url = $endpoint . '?query=' . uri_escape($sparql) . '&format=application/json';
 
 	# Send the request
-	my $ua  = LWP::UserAgent->new;
-		$ua->ssl_opts(
-	SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE, 
-	verify_hostname => 0
-);
+	my $ua = LWP::UserAgent->new;
+	$ua->ssl_opts(
+		SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE, 
+		verify_hostname => 0
+	);
 	my $res = $ua->get($query_url);
 
 	if ($res->is_success) {
@@ -53,9 +53,9 @@ SPARQL
 		if (@$results) {
 			my $result = $results->[0];
 			return {
-				place	  => $result->{place}{value},
-				lat		=> $result->{lat}{value},
-				long	   => $result->{long}{value},
+				place	=> $result->{place}{value},
+				lat	=> $result->{lat}{value},
+				long	 => $result->{long}{value},
 				country	=> $result->{country}{value},
 				population => $result->{population}{value} // 'Unknown',
 			};
@@ -151,9 +151,9 @@ foreach my $location (@locations) {
 	my $geocoding_info = query_dbpedia_geocoding($location, @types);
 	if ($geocoding_info) {
 		push @geocoding_results, {
-			name	   => $location,
-			lat		=> $geocoding_info->{lat},
-			long	   => $geocoding_info->{long},
+			name	 => $location,
+			lat	=> $geocoding_info->{lat},
+			long	 => $geocoding_info->{long},
 			population => $geocoding_info->{population},
 		};
 	} else {
