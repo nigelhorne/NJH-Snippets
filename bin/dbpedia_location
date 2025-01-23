@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-
 use strict;
 use warnings;
 use IO::Socket::SSL;
@@ -12,7 +11,7 @@ sub query_dbpedia_geocoding {
     my ($location, @types) = @_;
 
     # DBpedia SPARQL endpoint
-    my $endpoint = 'https://dbpedia.org/sparql';
+    my $endpoint = "https://dbpedia.org/sparql";
 
     # Construct the FILTER clause for types
     my $filter_types = join(", ", map { "dbo:$_" } @types);
@@ -40,7 +39,7 @@ SPARQL
 
     # Send the request
     my $ua  = LWP::UserAgent->new;
-    $ua->ssl_opts(
+        $ua->ssl_opts(
     SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE, 
     verify_hostname => 0
 );
@@ -67,6 +66,46 @@ SPARQL
     }
 }
 
+# Function to create an HTML map using Leaflet.js
+sub create_html_map {
+    my ($lat, $long, $location, $output_file) = @_;
+
+    my $html_content = <<"HTML";
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Map of $location</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        #map { height: 600px; width: 100%; }
+    </style>
+</head>
+<body>
+    <h1>Map of $location</h1>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map').setView([$lat, $long], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        L.marker([$lat, $long]).addTo(map)
+            .bindPopup('<b>$location</b>')
+            .openPopup();
+    </script>
+</body>
+</html>
+HTML
+
+    open my $fh, '>', $output_file or die "Cannot open file '$output_file': $!";
+    print $fh $html_content;
+    close $fh;
+    print "Map saved to $output_file. Open it in your browser to view.\n";
+}
+
 # Main script
 print "Enter a location name: ";
 chomp(my $location = <STDIN>);
@@ -88,11 +127,12 @@ my $geocoding_info = query_dbpedia_geocoding($location, @types);
 
 if ($geocoding_info) {
     print "\nGeocoding Information for $location:\n";
-    print "Place URI: $geocoding_info->{place}\n";
     print "Latitude: $geocoding_info->{lat}\n";
     print "Longitude: $geocoding_info->{long}\n";
-    print "Country URI: $geocoding_info->{country}\n";
-    print "Population: $geocoding_info->{population}\n";
+
+    # Generate HTML map
+    my $output_file = "map_of_$location.html";
+    create_html_map($geocoding_info->{lat}, $geocoding_info->{long}, $location, $output_file);
 } else {
     print "No geocoding information found for $location.\n";
 }
