@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 
+# Query DBpedia for Geocoding
+
 use strict;
 use warnings;
 use LWP::UserAgent;
@@ -25,15 +27,16 @@ SELECT ?place ?lat ?long ?country WHERE {
          geo:lat ?lat ;
          geo:long ?long ;
          dbo:country ?country .
+	 OPTIONAL { ?place dbo:populationTotal ?population }
 }
 LIMIT 1
 SPARQL
 
 	# Encode the SPARQL query
-	my $query_url = $endpoint . "?query=" . uri_escape($sparql) . "&format=application/json";
+	my $query_url = $endpoint . '?query=' . uri_escape($sparql) . '&format=application/json';
 
 	# Send the request
-	my $ua  = LWP::UserAgent->new;
+	my $ua = LWP::UserAgent->new;
 	my $res = $ua->get($query_url);
 
 	if ($res->is_success) {
@@ -43,10 +46,11 @@ SPARQL
 		if (@$results) {
 			my $result = $results->[0];
 			return {
-				place   => $result->{place}{value},
-				lat     => $result->{lat}{value},
-				long    => $result->{long}{value},
+				place => $result->{place}{value},
+				lat  => $result->{lat}{value},
+				long => $result->{long}{value},
 				country => $result->{country}{value},
+				population => $result->{population}{value} // 'Unknown',
 			};
 		} else {
 			return undef; # No results found
@@ -57,7 +61,7 @@ SPARQL
 }
 
 # Main script
-print "Enter a location name: ";
+print 'Enter a location name: ';
 chomp(my $location = <STDIN>);
 
 my $geocoding_info = query_dbpedia_geocoding($location);
@@ -68,6 +72,7 @@ if ($geocoding_info) {
 	print "Latitude: $geocoding_info->{lat}\n";
 	print "Longitude: $geocoding_info->{long}\n";
 	print "Country URI: $geocoding_info->{country}\n";
+	print "Population: $geocoding_info->{population}\n";
 } else {
 	print "No geocoding information found for $location.\n";
 }

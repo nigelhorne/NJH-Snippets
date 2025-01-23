@@ -4,6 +4,10 @@
 
 Code snippets
 
+## dbpedia_location
+
+# Query DBpedia for Geocoding
+
 ## format
 
 Short C program to show the different formatting options with printf.
