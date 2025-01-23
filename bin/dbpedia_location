@@ -1,78 +1,99 @@
-#!/usr/bin/env perl
-
-# Query DBpedia for Geocoding
+#!/usr/bin/perl
 
 use strict;
 use warnings;
+use IO::Socket::SSL;
 use LWP::UserAgent;
 use URI::Escape;
-use JSON::MaybeXS;
+use JSON;
 
-# Function to query DBpedia for geocoding
+# Function to query DBpedia for geocoding and population
 sub query_dbpedia_geocoding {
-	my $location = shift;
+    my ($location, @types) = @_;
 
-	# DBpedia SPARQL endpoint
-	my $endpoint = 'https://dbpedia.org/sparql';
+    # DBpedia SPARQL endpoint
+    my $endpoint = 'https://dbpedia.org/sparql';
 
-	# SPARQL query to get geocoding information
-	my $sparql = <<"SPARQL";
+    # Construct the FILTER clause for types
+    my $filter_types = join(", ", map { "dbo:$_" } @types);
+
+    # SPARQL query to get geocoding and population
+    my $sparql = <<"SPARQL";
 PREFIX dbo: <http://dbpedia.org/ontology/>
 PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?place ?lat ?long ?country WHERE {
-  ?place a dbo:Place ;
+SELECT ?place ?lat ?long ?country ?population WHERE {
+  ?place a ?type ;
          rdfs:label "$location"\@en ;
          geo:lat ?lat ;
          geo:long ?long ;
          dbo:country ?country .
-	 OPTIONAL { ?place dbo:populationTotal ?population }
+  FILTER (?type IN ($filter_types))
+  OPTIONAL { ?place dbo:populationTotal ?population }
 }
 LIMIT 1
 SPARQL
 
-	# Encode the SPARQL query
-	my $query_url = $endpoint . '?query=' . uri_escape($sparql) . '&format=application/json';
+    # Encode the SPARQL query
+    my $query_url = $endpoint . "?query=" . uri_escape($sparql) . "&format=application/json";
 
-	# Send the request
-	my $ua = LWP::UserAgent->new;
-	my $res = $ua->get($query_url);
+    # Send the request
+    my $ua  = LWP::UserAgent->new;
+    $ua->ssl_opts(
+    SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE, 
+    verify_hostname => 0
+);
+    my $res = $ua->get($query_url);
 
-	if ($res->is_success) {
-		my $content = decode_json($res->decoded_content);
-		my $results = $content->{results}{bindings};
+    if ($res->is_success) {
+        my $content = decode_json($res->decoded_content);
+        my $results = $content->{results}{bindings};
 
-		if (@$results) {
-			my $result = $results->[0];
-			return {
-				place => $result->{place}{value},
-				lat  => $result->{lat}{value},
-				long => $result->{long}{value},
-				country => $result->{country}{value},
-				population => $result->{population}{value} // 'Unknown',
-			};
-		} else {
-			return undef; # No results found
-		}
-	} else {
-		die 'Failed to query DBpedia: ', $res->status_line;
-	}
+        if (@$results) {
+            my $result = $results->[0];
+            return {
+                place      => $result->{place}{value},
+                lat        => $result->{lat}{value},
+                long       => $result->{long}{value},
+                country    => $result->{country}{value},
+                population => $result->{population}{value} // "Unknown",
+            };
+        } else {
+            return undef; # No results found
+        }
+    } else {
+        die "Failed to query DBpedia: " . $res->status_line;
+    }
 }
 
 # Main script
-print 'Enter a location name: ';
+print "Enter a location name: ";
 chomp(my $location = <STDIN>);
 
-my $geocoding_info = query_dbpedia_geocoding($location);
+print "Enter place types to search (comma-separated, e.g., City,Town,Country): ";
+chomp(my $types_input = <STDIN>);
+
+# Default to "City" if no types are provided
+if ($types_input =~ /^\s*$/) {
+    print "No types specified. Defaulting to 'City'.\n";
+    $types_input = "City";
+}
+
+# Split types and trim whitespace
+my @types = map { s/^\s+|\s+$//g; $_ } split(",", $types_input);
+
+# Query DBpedia
+my $geocoding_info = query_dbpedia_geocoding($location, @types);
 
 if ($geocoding_info) {
-	print "\nGeocoding Information for $location:\n";
-	print "Place URI: $geocoding_info->{place}\n";
-	print "Latitude: $geocoding_info->{lat}\n";
-	print "Longitude: $geocoding_info->{long}\n";
-	print "Country URI: $geocoding_info->{country}\n";
-	print "Population: $geocoding_info->{population}\n";
+    print "\nGeocoding Information for $location:\n";
+    print "Place URI: $geocoding_info->{place}\n";
+    print "Latitude: $geocoding_info->{lat}\n";
+    print "Longitude: $geocoding_info->{long}\n";
+    print "Country URI: $geocoding_info->{country}\n";
+    print "Population: $geocoding_info->{population}\n";
 } else {
-	print "No geocoding information found for $location.\n";
+    print "No geocoding information found for $location.\n";
 }
+
