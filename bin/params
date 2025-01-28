@@ -1,0 +1,16 @@
+#!/usr/bin/perl -wT
+
+use strict;
+use warnings;
+
+a(b => 'c', d => 'f');
+a({ b => 'e', d => 'g' });
+
+sub a {
+	my %params = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
+
+	print $params{b};
+	print $params{d};
+
+	# print ref($_[0]);
+}
