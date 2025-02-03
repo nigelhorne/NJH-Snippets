@@ -1,0 +1,12 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use Geo::Leaflet;
+my $map = Geo::Leaflet->new(
+                            id     => "map",
+                            center => [51.505, -0.09],
+                            zoom   => 13,
+                           );
+print $map->html;

@@ -1,0 +1,131 @@
+#!/usr/bin/env perl
+
+#!/usr/bin/perl
+use strict;
+use warnings;
+use LWP::UserAgent;
+use HTML::LinkExtractor;
+use URI;
+use IO::File;
+use HTML::Strip;
+use Text::Aspell;
+
+my $base_url = "https://genealogy.nigelhorne.com";
+my $first_url = "$base_url/cgi-bin/page.fcgi?page=home";
+my %checked_urls;
+my $logfile = "errors.log";
+my $spelling_log = "spelling_errors.log";
+
+# Open log files
+my $log = IO::File->new(">$logfile") or die "Cannot open $logfile: $!";
+my $spell_log = IO::File->new(">$spelling_log") or die "Cannot open $spelling_log: $!";
+
+# Initialize spell checker
+my $speller = Text::Aspell->new;
+$speller->set_option('lang', 'en') or die "Failed to set language: " . $speller->errstr;
+
+# Create a user agent
+my $ua = LWP::UserAgent->new;
+$ua->timeout(10);
+$ua->agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+
+# Regular expression for extracting URLs from JavaScript
+my $js_url_regex = qr{
+    (?:"|')                          # Start with a quote
+    (https?:\/\/[^\s"']+)            # Capture full URL
+    (?:"|')                          # End with a quote
+}xi;
+
+# Crawl and check links
+sub check_links {
+    my ($url) = @_;
+
+    # Avoid checking the same URL twice
+    return if $checked_urls{$url};
+    $checked_urls{$url} = 1;
+
+    print "Checking: $url\n";
+
+    # Get the page
+    my $response = $ua->get($url);
+    if (!$response->is_success) {
+        my $error_msg = "ERROR: $url - " . $response->status_line . "\n";
+        print $error_msg;
+        print $log $error_msg;
+        return;
+    }
+
+    my $html = $response->decoded_content;
+
+    # Extract links from HTML
+    if ($url =~ /\.js$/) {
+        extract_js_links($url, $html);
+    } else {
+        extract_html_links($url, $html);
+        check_spelling($url, $html);
+    }
+}
+
+# Extract links from HTML (including script tags)
+sub extract_html_links {
+    my ($url, $html) = @_;
+
+    my $extractor = HTML::LinkExtractor->new;
+    $extractor->parse(\$html);
+
+    foreach my $link (@{$extractor->links}) {
+        next unless $link->{href};
+
+        my $absolute_url = URI->new_abs($link->{href}, $url)->as_string;
+        check_links($absolute_url);
+    }
+
+    # Find JavaScript files in script tags
+    while ($html =~ /<script.*?src=["'](.*?)["']/gi) {
+        my $js_url = URI->new_abs($1, $url)->as_string;
+        check_links($js_url);
+    }
+
+    # Find links inside inline JavaScript
+    extract_js_links($url, $html);
+}
+
+# Extract links from JavaScript content
+sub extract_js_links {
+    my ($url, $js_content) = @_;
+
+    while ($js_content =~ /$js_url_regex/g) {
+        my $js_url = $1;
+        my $absolute_url = URI->new_abs($js_url, $url)->as_string;
+        check_links($absolute_url);
+    }
+}
+
+# Check spelling on a page
+sub check_spelling {
+    my ($url, $html) = @_;
+
+    # Strip HTML to extract pure text
+    my $hs = HTML::Strip->new();
+    my $text = $hs->parse($html);
+    $hs->eof;
+
+    # Extract words and check spelling
+    my @words = split(/\s+/, $text);
+    foreach my $word (@words) {
+        $word =~ s/[^a-zA-Z']//g; # Remove non-alphabetic characters
+        next if $word eq '' || $speller->check($word); # Skip valid words
+
+        my $error_msg = "MISSPELLED: '$word' found on $url\n";
+        print $error_msg;
+        print $spell_log $error_msg;
+    }
+}
+
+# Start crawling from the base URL
+check_links($first_url);
+
+print "Website scan completed. Errors (if any) are logged in $logfile and spelling mistakes in $spelling_log.\n";
+$log->close;
+$spell_log->close;
+
