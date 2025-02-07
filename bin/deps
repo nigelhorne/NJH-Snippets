@@ -5,6 +5,8 @@
 # Test::Needs => libtest-needs-perl
 # Test::Most => libtest-most-perl
 # XML::Twig => libxml-twig-perl
+# Sendmail::PMilter => libsendmail-pmilter-perl
+# Sendmail::Milter => libmail-sendmail-perl
 
 # Alpine
 # Test::DescribeMe => perl-test-describeme
