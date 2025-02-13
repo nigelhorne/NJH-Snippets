@@ -10,6 +10,7 @@
 
 # Alpine
 # Test::DescribeMe => perl-test-describeme
+# Test::MockModule => perl-test-mockmodule
 
 use strict;
 use warnings;
