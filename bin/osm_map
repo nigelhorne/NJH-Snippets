@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 
 package main;
 
@@ -6,7 +6,7 @@ use strict;
 use warnings;
 
 my @coordinates = (
-	[51.5074, -0.1278, 'London<p><b>foo</b></p>'],   # London
+	[51.5074, -0.1278, 'London'],   # London
 	[52.2053, 0.1218, 'Cambridge'],	# Cambridge
 	[53.4808, -2.2426, 'Manchester']	# Manchester
 );
@@ -33,11 +33,11 @@ sub new {
 sub generate_map {
 	my ($self) = @_;
 	my $coordinates = $self->{coordinates};
-	
-	die "No coordinates provided" unless @$coordinates;
-	
+
+	die 'No coordinates provided' unless @$coordinates;
+
 	my ($min_lat, $min_lon, $max_lat, $max_lon) = (90, 180, -90, -180);
-	
+
 	foreach my $coord (@$coordinates) {
 		my ($lat, $lon, $label) = @$coord;
 		$min_lat = $lat if $lat < $min_lat;
@@ -45,10 +45,10 @@ sub generate_map {
 		$min_lon = $lon if $lon < $min_lon;
 		$max_lon = $lon if $lon > $max_lon;
 	}
-	
+
 	my $center_lat = ($min_lat + $max_lat) / 2;
 	my $center_lon = ($min_lon + $max_lon) / 2;
-	
+
 	my $html = qq{
 <!DOCTYPE html>
 <html>
@@ -58,29 +58,60 @@ sub generate_map {
 	<script src="https://unpkg.com/leaflet\@1.7.1/dist/leaflet.js"></script>
 	<style>
 		#map { height: 500px; width: 100%; }
+		#search-box { margin: 10px; padding: 5px; }
+		#reset-button { margin: 10px; padding: 5px; cursor: pointer; }
 	</style>
 </head>
 <body>
+	<input type="text" id="search-box" placeholder="Enter location">
+	<button id="reset-button">Reset Map</button>
 	<div id="map"></div>
 	<script>
 		var map = L.map('map').setView([$center_lat, $center_lon], $self->{zoom});
 		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution: '&copy; OpenStreetMap contributors'
 		}).addTo(map);
-	
+
+		var markers = [];
+
 	};
-	
+
 	my @js_markers;
 	foreach my $coord (@$coordinates) {
 		my ($lat, $lon, $label) = @$coord;
-		push @js_markers, "L.marker([$lat, $lon]).addTo(map).bindPopup('$label');";
+		push @js_markers, "var marker = L.marker([$lat, $lon]).addTo(map).bindPopup('$label'); markers.push(marker);";
 	}
-	
-	$html .= join("\n", @js_markers) . "</script></body></html>";
-	
+
+	$html .= join("\n", @js_markers);
+
+	$html .= qq{
+		document.getElementById('reset-button').addEventListener('click', function() {
+			map.setView([$center_lat, $center_lon], $self->{zoom});
+		});
+
+		document.getElementById('search-box').addEventListener('keyup', function(event) {
+			if (event.key === 'Enter') {
+				var query = event.target.value;
+				fetch(`https://nominatim.openstreetmap.org/search?format=json&q=\${query}`)
+					.then(response => response.json())
+					.then(data => {
+						if (data.length > 0) {
+							var lat = data[0].lat;
+							var lon = data[0].lon;
+							map.setView([lat, lon], 14);
+							var searchMarker = L.marker([lat, lon]).addTo(map).bindPopup(query).openPopup();
+							markers.push(searchMarker);
+						}
+					});
+			}
+		});
+	</script>
+</body>
+</html>
+	};
+
 	write_file('map.html', $html);
 	print "Interactive map saved as map.html. Open this file in a browser.\n";
 }
 
 1;
-
