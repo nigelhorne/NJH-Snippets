@@ -9,6 +9,7 @@
 # Sendmail::Milter => libmail-sendmail-perl
 
 # Alpine
+# CHI => perl-chi
 # Test::DescribeMe => perl-test-describeme
 # Test::MockModule => perl-test-mockmodule
 

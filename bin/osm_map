@@ -1,0 +1,86 @@
+#!/usr/bin/env perl
+
+package main;
+
+use strict;
+use warnings;
+
+my @coordinates = (
+	[51.5074, -0.1278, 'London<p><b>foo</b></p>'],   # London
+	[52.2053, 0.1218, 'Cambridge'],	# Cambridge
+	[53.4808, -2.2426, 'Manchester']	# Manchester
+);
+
+my $map_generator = OSMMapGenerator->new(coordinates => \@coordinates, zoom => 10);
+$map_generator->generate_map();
+
+package OSMMapGenerator;
+
+use strict;
+use warnings;
+use File::Slurp;
+
+sub new {
+	my ($class, %args) = @_;
+	my $self = {
+		coordinates => $args{coordinates} || [],
+		zoom	   => $args{zoom} || 12,
+	};
+	bless $self, $class;
+	return $self;
+}
+
+sub generate_map {
+	my ($self) = @_;
+	my $coordinates = $self->{coordinates};
+	
+	die "No coordinates provided" unless @$coordinates;
+	
+	my ($min_lat, $min_lon, $max_lat, $max_lon) = (90, 180, -90, -180);
+	
+	foreach my $coord (@$coordinates) {
+		my ($lat, $lon, $label) = @$coord;
+		$min_lat = $lat if $lat < $min_lat;
+		$max_lat = $lat if $lat > $max_lat;
+		$min_lon = $lon if $lon < $min_lon;
+		$max_lon = $lon if $lon > $max_lon;
+	}
+	
+	my $center_lat = ($min_lat + $max_lat) / 2;
+	my $center_lon = ($min_lon + $max_lon) / 2;
+	
+	my $html = qq{
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Interactive Map</title>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet\@1.7.1/dist/leaflet.css" />
+	<script src="https://unpkg.com/leaflet\@1.7.1/dist/leaflet.js"></script>
+	<style>
+		#map { height: 500px; width: 100%; }
+	</style>
+</head>
+<body>
+	<div id="map"></div>
+	<script>
+		var map = L.map('map').setView([$center_lat, $center_lon], $self->{zoom});
+		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			attribution: '&copy; OpenStreetMap contributors'
+		}).addTo(map);
+	
+	};
+	
+	my @js_markers;
+	foreach my $coord (@$coordinates) {
+		my ($lat, $lon, $label) = @$coord;
+		push @js_markers, "L.marker([$lat, $lon]).addTo(map).bindPopup('$label');";
+	}
+	
+	$html .= join("\n", @js_markers) . "</script></body></html>";
+	
+	write_file('map.html', $html);
+	print "Interactive map saved as map.html. Open this file in a browser.\n";
+}
+
+1;
+
