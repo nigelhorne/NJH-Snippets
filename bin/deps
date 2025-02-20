@@ -12,6 +12,9 @@
 # CHI => perl-chi
 # Test::DescribeMe => perl-test-describeme
 # Test::MockModule => perl-test-mockmodule
+# Test::RequiresInternet => perl-test-requiresinternet
+# XML::Parser => perl-xml-parser
+# XML::Simple => perl-xml-simple
 
 use strict;
 use warnings;
