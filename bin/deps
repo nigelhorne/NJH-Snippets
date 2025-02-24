@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 
 # Debian
+# DBD::CSV => libdbd-csv-perl
 # IO:AIO => libio-aio-perl
 # Test::Needs => libtest-needs-perl
 # Test::Most => libtest-most-perl
