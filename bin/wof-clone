@@ -67,5 +67,6 @@ git clone https://github.com/whosonfirst-data/whosonfirst-data-venue-us-wa
 git clone https://github.com/whosonfirst-data/whosonfirst-data-venue-us-wi
 git clone https://github.com/whosonfirst-data/whosonfirst-data-venue-us-wv
 git clone https://github.com/whosonfirst-data/whosonfirst-data-venue-us-wy
+git clone https://github.com/whosonfirst-data/whosonfirst-data-admin-xz
 
 echo Put export WHOSONFIRST_HOME=$WHOSONFIRST_HOME in to your .profile
