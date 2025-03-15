@@ -1,0 +1,6 @@
+#!/usr/bin/env perl
+
+my $filename = $ENV{'WHOSONFIRST_HOME'} . "/*/data/286/455/973/286455973.geojson";
+
+my @filelist = <"$filename">;
+print $filelist[0], "\n";
