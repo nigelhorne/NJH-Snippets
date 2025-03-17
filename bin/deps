@@ -3,14 +3,16 @@
 # Debian
 # DBD::CSV => libdbd-csv-perl
 # IO:AIO => libio-aio-perl
+# Parallel::ForkManager => p5-Parallel-ForkManager
+# Sendmail::PMilter => libsendmail-pmilter-perl
+# Sendmail::Milter => libmail-sendmail-perl
 # Test::Needs => libtest-needs-perl
 # Test::Most => libtest-most-perl
 # XML::Twig => libxml-twig-perl
-# Sendmail::PMilter => libsendmail-pmilter-perl
-# Sendmail::Milter => libmail-sendmail-perl
 
 # Alpine
 # CHI => perl-chi
+# Parallel::ForkManager => perl-parallel-forkmanager
 # Test::DescribeMe => perl-test-describeme
 # Test::MockModule => perl-test-mockmodule
 # Test::MockObject => perl-test-mockobject
