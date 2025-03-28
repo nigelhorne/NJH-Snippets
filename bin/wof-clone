@@ -68,9 +68,12 @@ git clone https://github.com/whosonfirst-data/whosonfirst-data-venue-us-wi
 git clone https://github.com/whosonfirst-data/whosonfirst-data-venue-us-wv
 git clone https://github.com/whosonfirst-data/whosonfirst-data-venue-us-wy
 git clone https://github.com/whosonfirst-data/whosonfirst-data-admin-xz
-git clone git@github.com:whosonfirst-data/whosonfirst-data-admin-cx.git
-git clone git@github.com:whosonfirst-data/whosonfirst-data-admin-ru.git
+# git clone git@github.com:whosonfirst-data/whosonfirst-data-admin-cx.git
+# git clone git@github.com:whosonfirst-data/whosonfirst-data-admin-ru.git
 git clone git@github.com:whosonfirst-data/whosonfirst-data-admin-as.git
 git clone git@github.com:whosonfirst-data/whosonfirst-data-admin-gu.git
+# git clone git@github.com:whosonfirst-data/whosonfirst-data-admin-vi.git
+# git clone git@github.com:whosonfirst-data/whosonfirst-data-admin-lk.git
+# git clone git@github.com:whosonfirst-data/whosonfirst-data-admin-in.git
 
 echo Put export WHOSONFIRST_HOME=$WHOSONFIRST_HOME in to your .profile
