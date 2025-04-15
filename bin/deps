@@ -20,6 +20,12 @@
 # XML::Parser => perl-xml-parser
 # XML::Simple => perl-xml-simple
 
+# FreeBSD
+# XML::Parser => p5-XML-Parser
+
+# OpenBSD
+# XML::Parser => p5-XML-Parser
+
 use strict;
 use warnings;
 
