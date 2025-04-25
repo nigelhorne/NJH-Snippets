@@ -1,0 +1,158 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use File::Slurp;
+
+# Recursively resolve <xi:include href="file.xml" />
+sub resolve_xinclude {
+    my ($xml, $base_path) = @_;
+    $xml =~ s{<xi:include\s+href="([^"]+)"\s*/>}{
+        my $include_path = "$base_path/$1";
+        die "Included file '$include_path' not found" unless -e $include_path;
+        my $included = read_file($include_path);
+        resolve_xinclude($included, $base_path);  # Recursively resolve
+    }gex;
+    return $xml;
+}
+
+sub parse_xml_with_dtd {
+    my ($xml, $schema, $base_path) = @_;
+    my %entities;
+
+    # Resolve XInclude first (before DTD processing)
+    $base_path ||= '.';
+    $xml = resolve_xinclude($xml, $base_path);
+
+    # External DTD support
+    if ($xml =~ s/<!DOCTYPE\s+(\w+)\s+(SYSTEM|PUBLIC)\s+"([^"]+)"\s*>//s) {
+        my $dtd_file = "$base_path/$3";
+        my $dtd_content = read_file($dtd_file)
+            or die "Failed to read DTD file '$dtd_file'";
+
+        while ($dtd_content =~ /<!ENTITY\s+(\w+)\s+"([^"]*)"\s*>/g) {
+            $entities{$1} = $2;
+        }
+    }
+
+    # Internal DTD support
+    if ($xml =~ s/<!DOCTYPE\s+\w+\s+\[([^\]]+)\]>//s) {
+        my $internal_dtd = $1;
+        while ($internal_dtd =~ /<!ENTITY\s+(\w+)\s+"([^"]*)"\s*>/g) {
+            $entities{$1} = $2;
+        }
+    }
+
+    # Replace entity references
+    $xml =~ s/&(\w+);/
+        exists $entities{$1} ? $entities{$1} :
+        $1 eq 'amp'  ? '&' :
+        $1 eq 'lt'   ? '<' :
+        $1 eq 'gt'   ? '>' :
+        $1 eq 'quot' ? '"' :
+        $1 eq 'apos' ? "'" :
+        die "Unknown entity: &$1;"
+    /ge;
+
+    return parse_xml($xml, $schema);
+}
+
+
+sub parse_xml {
+    my ($xml, $schema) = @_;
+    $xml =~ s/^\s+|\s+$//g;
+    my ($tag, $data) = _parse_element(\$xml, $schema);
+    return ($tag, $data);
+}
+
+sub _parse_element {
+    my ($xml_ref, $schema) = @_;
+
+    $$xml_ref =~ s/^\s*<([\w:]+)(.*?)\s*(\/?)>\s*//s or die "Expected opening tag";
+    my ($tag, $attr_str, $self_closing) = ($1, $2, $3);
+
+    my $attributes = _parse_attributes($attr_str);
+    my $content = $attributes;
+
+    if ($self_closing) {
+        _validate_type($tag, undef, $schema);
+        return ($tag, $content);
+    }
+
+    while (1) {
+        if ($$xml_ref =~ /^\s*<\/$tag>/) {
+            $$xml_ref =~ s/^\s*<\/$tag>\s*//;
+            last;
+        }
+
+        if ($$xml_ref =~ s/^<!\[CDATA\[(.*?)\]\]>\s*//s) {
+            $content->{_text} = $1;
+        }
+        elsif ($$xml_ref =~ /^\s*<([\w:]+)/) {
+            my ($child_tag, $child_content) = _parse_element($xml_ref, $schema);
+            push @{ $content->{$child_tag} }, $child_content;
+        }
+        elsif ($$xml_ref =~ s/^([^<]+)//) {
+            my $text = $1;
+            $text =~ s/^\s+|\s+$//g;
+            $content->{_text} = $text if $text ne '';
+        }
+        else {
+            die "Malformed XML near: $$xml_ref";
+        }
+    }
+
+    _validate_type($tag, $content->{_text}, $schema) if $schema;
+    return ($tag, $content);
+}
+
+sub _parse_attributes {
+    my ($attr_str) = @_;
+    my %attrs;
+
+    while ($attr_str =~ /([\w:]+)\s*=\s*"([^"]*)"/g) {
+        $attrs{$1} = $2;
+    }
+
+    return \%attrs;
+}
+
+# Very basic simulation of schema validation
+sub _validate_type {
+    my ($tag, $value, $schema) = @_;
+    return unless $schema && $schema->{$tag};
+
+    my $type = $schema->{$tag};
+    if ($type eq 'string') {
+        return;
+    } elsif ($type eq 'int' && $value !~ /^\d+$/) {
+        die "Validation error: <$tag> expected int, got '$value'";
+    } elsif ($type eq 'bool' && $value !~ /^(true|false)$/) {
+        die "Validation error: <$tag> expected bool, got '$value'";
+    }
+}
+
+# 🧪 Example usage
+my $xml = q{
+<!DOCTYPE root [
+  <!ENTITY custom "Custom Entity Value">
+]>
+<root>
+  <title>Example with &amp; and &custom;</title>
+  <flag>true</flag>
+  <count>123</count>
+</root>
+};
+
+# Optional simulated "schema"
+my $schema = {
+    title => 'string',
+    flag  => 'bool',
+    count => 'int',
+};
+
+my ($tag, $data) = parse_xml_with_dtd($xml, $schema);
+use Data::Dumper;
+print Dumper({ $tag => $data });
+
