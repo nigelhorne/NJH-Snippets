@@ -7,13 +7,42 @@ use File::Slurp;
 
 # Recursively resolve <xi:include href="file.xml" />
 sub resolve_xinclude {
-    my ($xml, $base_path) = @_;
+    my ($xml, $base_path, $seen_files) = @_;
+    $seen_files ||= {};
+
+    $xml =~ s{<xi:include\s+href="([^"]+)"\s*>(.*?)</xi:include>}{
+        my ($href, $inner) = ($1, $2);
+        my $include_path = "$base_path/$href";
+
+        die "Circular include detected: '$include_path'" if $seen_files->{$include_path}++;
+
+        if (-e $include_path) {
+            my $included = read_file($include_path);
+            $seen_files->{$include_path}--;
+            resolve_xinclude($included, $base_path, $seen_files);  # Recurse
+        } else {
+            # Try to extract <xi:fallback>
+            if ($inner =~ m|<xi:fallback>(.*?)</xi:fallback>|s) {
+                $1;  # use fallback content
+            } else {
+                die "Included file '$include_path' not found and no fallback provided";
+            }
+        }
+    }gex;
+
+    # Also support self-closing include: <xi:include href="file.xml" />
     $xml =~ s{<xi:include\s+href="([^"]+)"\s*/>}{
         my $include_path = "$base_path/$1";
-        die "Included file '$include_path' not found" unless -e $include_path;
-        my $included = read_file($include_path);
-        resolve_xinclude($included, $base_path);  # Recursively resolve
+        die "Circular include detected: '$include_path'" if $seen_files->{$include_path}++;
+        if (-e $include_path) {
+            my $included = read_file($include_path);
+            $seen_files->{$include_path}--;
+            resolve_xinclude($included, $base_path, $seen_files);  # Recurse
+        } else {
+            die "Included file '$include_path' not found and no fallback provided";
+        }
     }gex;
+
     return $xml;
 }
 
@@ -23,7 +52,7 @@ sub parse_xml_with_dtd {
 
     # Resolve XInclude first (before DTD processing)
     $base_path ||= '.';
-    $xml = resolve_xinclude($xml, $base_path);
+    $xml = resolve_xinclude($xml, $base_path, {});
 
     # External DTD support
     if ($xml =~ s/<!DOCTYPE\s+(\w+)\s+(SYSTEM|PUBLIC)\s+"([^"]+)"\s*>//s) {
