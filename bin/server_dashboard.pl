@@ -17,11 +17,11 @@ sub log_error {
 	close $log_fh;
 }
 
-# Read server list from config file
+# Read server list from config file, ignoring comment lines
 sub load_servers {
 	my $file = 'servers.txt';
 	open my $fh, '<', $file or die "Cannot open $file: $!";
-	my @list = grep { /\S/ } map { chomp; $_ } <$fh>;
+	my @list = grep { /\S/ && !/^#/ } map { chomp; $_ } <$fh>;
 	close $fh;
 	return @list;
 }
