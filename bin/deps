@@ -9,6 +9,7 @@
 # Test::Needs => libtest-needs-perl
 # Test::Most => libtest-most-perl
 # XML::Twig => libxml-twig-perl
+# HTML::TreeBuilder::XPath => libhtml-treebuilder-xpath-perl
 
 # Alpine
 # CHI => perl-chi
