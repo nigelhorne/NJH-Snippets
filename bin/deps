@@ -3,7 +3,7 @@
 # Debian
 # DBD::CSV => libdbd-csv-perl
 # IO:AIO => libio-aio-perl
-# Parallel::ForkManager => p5-Parallel-ForkManager
+# Parallel::ForkManager => libparallel-forkmanager-perl
 # Sendmail::PMilter => libsendmail-pmilter-perl
 # Sendmail::Milter => libmail-sendmail-perl
 # Test::Needs => libtest-needs-perl
@@ -22,6 +22,7 @@
 # XML::Simple => perl-xml-simple
 
 # FreeBSD
+# Parallel::ForkManager => p5-Parallel-ForkManager
 # XML::Parser => p5-XML-Parser
 
 # OpenBSD
