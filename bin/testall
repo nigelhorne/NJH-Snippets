@@ -1,14 +1,9 @@
 #!/usr/bin/env bash
 
 set -e
+export NO_NETWORK_TESTING=1
 
-export AUTOMATED_TESTING=1 AUTHOR_TESTING=1 NO_NETWORK_TESTING=1
-
-cd ~/src
-for i in $(find . -type d -name .git | sed s/\\/.git$//); do
-        cd ~/src/$i
-	if [ -f Makefile.PL ]; then
-		git pull
-		perlbrew exec 'perl Makefile.PL && make && make test'
-	fi
+for i in $(find -L ~/src/njh -type f -name Makefile.PL | sed s/\\/Makefile.PL$//); do
+	echo Testing $i
+	cd $i && git pull && perl Makefile.PL && make && make test
 done
