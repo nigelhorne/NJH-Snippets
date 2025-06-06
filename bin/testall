@@ -5,5 +5,5 @@ export NO_NETWORK_TESTING=1
 
 for i in $(find -L ~/src/njh -type f -name Makefile.PL | sed s/\\/Makefile.PL$//); do
 	echo Testing $i
-	cd $i && git pull && perl Makefile.PL && make && make test
+	cd $i && git pull && cpanm -iqn --skip-satisfied --installdeps --notest . && perl Makefile.PL && make && make test
 done
