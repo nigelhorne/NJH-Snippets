@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use PPI;
 
-# A little helper to rank relational operators
+# operator “strength” ranking
 my %rank = (
   '>'  => 3, '>=' => 2,
   '==' => 1, 'eq' => 1,
@@ -12,80 +12,78 @@ my %rank = (
 
 sub parse_cond {
   my $str = shift;
-  # normalize whitespace & strip parens
   $str =~ s/^\s*\(//;  $str =~ s/\)\s*$//;
-  # simple “$var op value” or “value op $var”
   if ($str =~ /^\s*\$(\w+)\s*(>=|>|==|<=|<|eq|ne)\s*(.+?)\s*$/) {
     return ($1, $2, $3);
   }
   if ($str =~ /^\s*(.+?)\s*(>=|>|==|<=|<|eq|ne)\s*\$(\w+)\s*$/) {
-    # flip it so var always on the left
     my ($val, $op, $var) = ($1, $2, $3);
-    # invert op for consistency: “5 < $x” → “$x > 5”
     my %flip = ('<' => '>', '<=' => '>=', '>' => '<',
                 '>=' => '<=', '==' => '==', 'eq' => 'eq', 'ne' => 'ne');
     return ($var, $flip{$op}, $val);
   }
-  return;  # can't parse
+  return;
 }
 
-die "Usage: $0 file.pl\n" unless @ARGV==1;
-my $doc = PPI::Document->new( shift );
+die "Usage: $0 file1.pl [file2.pl ...]\n" unless @ARGV;
 
-for my $outer ( @{ $doc->find('PPI::Structure::If')||[] } ) {
-  my $cond1   = $outer->schild(0)->content;
-  my ($var1,$op1,$val1) = parse_cond($cond1) or next;
+for my $file (@ARGV) {
+  print "\nScanning $file …\n";
+  my $doc = PPI::Document->new($file)
+    or warn "  ✗ Failed to parse $file: $@\n" and next;
 
-  # look for ANY nested If or Unless
-  for my $inner ( @{ $outer->find('PPI::Structure::If')||[] } ) {
-    next if $inner == $outer;
-    my $cond2 = $inner->schild(0)->content;
-    my ($var2,$op2,$val2) = parse_cond($cond2) or next;
-    next unless $var1 eq $var2;
+  my $ifs = $doc->find('PPI::Structure::If') || [];
+  for my $outer (@$ifs) {
+    my $c1 = $outer->schild(0)->content;
+    my ($v1,$o1,$x1) = parse_cond($c1) or next;
 
-    # 1) numeric thresholds: if op2 is weaker or equal
-    if (exists $rank{$op1} && exists $rank{$op2}) {
-      # same direction? e.g. both “>”‐style or both “<”‐style
-      if ($rank{$op1} == $rank{$op2}) {
-        if ( $op1 =~ /[><]/ && $val2 <= $val1 ) {
-          printf "  [%d] redundant “%s” after “%s”\n",
-                 $inner->start->location->[0], $cond2, $cond1;
+    for my $inner (@$ifs) {
+      next if $inner == $outer;
+      # only scan direct children
+      next unless $inner->parent == $outer->block;
+      
+      my $c2 = $inner->schild(0)->content;
+      my ($v2,$o2,$x2) = parse_cond($c2) or next;
+      next unless $v1 eq $v2;
+
+      # 1) numeric‐threshold redundancy
+      if (exists $rank{$o1} && exists $rank{$o2}) {
+        if ($rank{$o1} == $rank{$o2} && $o1 =~ /[><]/ && $x2 <= $x1
+         || $rank{$o1} <  $rank{$o2}
+            && (
+               ($o1 =~ />=?/ && $x2 <= $x1)
+            || ($o1 =~ /<=?/ && $x2 >= $x1)
+               )
+        ) {
+          printf "  [%s:%d] redundant “%s” under “%s”\n",
+                 $file, $inner->start->location->[0], $c2, $c1;
+          next;
         }
       }
-      # stronger outer covers weaker inner
-      elsif ($rank{$op1} < $rank{$op2}) {
-        if ( ($op1 eq '>'  || $op1 eq '>=') && $val2 <= $val1
-          || ($op1 eq '<'  || $op1 eq '<=') && $val2 >= $val1 )
-        {
-          printf "  [%d] redundant “%s” under “%s”\n",
-                 $inner->start->location->[0], $cond2, $cond1;
-        }
+
+      # 2) identical unless‐unless
+      if ($outer->schild(0)->content eq 'unless'
+       && $inner->schild(0)->content eq 'unless'
+       && $c1 eq $c2)
+      {
+        printf "  [%s:%d] nested identical %s\n",
+               $file, $inner->start->location->[0], "unless($c2)";
+        next;
       }
-    }
 
-    # 2) double‐negatives: unless/unless or if(!$x)→if(!$x)
-    if ($outer->schild(0)->isa('PPI::Token::Word')
-     && $inner->schild(0)->isa('PPI::Token::Word')
-     && $outer->schild(0)->content eq 'unless'
-     && $inner->schild(0)->content eq 'unless'
-     && $cond1 eq $cond2 )
-    {
-      printf "  [%d] identical “unless(%s)” nested\n",
-             $inner->start->location->[0], $cond1;
-    }
+      # 3) exact‐text duplicate
+      if ($c1 eq $c2) {
+        printf "  [%s:%d] duplicate test “%s”\n",
+               $file, $inner->start->location->[0], $c2;
+        next;
+      }
 
-    # 3) exact-duplicate: same text, same var/op/val
-    if ($cond1 =~ /\Q$cond2\E/) {
-      printf "  [%d] exact duplicate test “%s”\n",
-             $inner->start->location->[0], $cond2;
-    }
-
-    # 4) regex-match duplicates
-    if ($cond1 =~ /\$${var1}\s*=~\s*(.+)/
-     && $cond2 =~ /\$${var1}\s*=~\s*\1/ )
-    {
-      printf "  [%d] duplicate regex match %s\n",
-             $inner->start->location->[0], $1;
+      # 4) duplicate regex‐match
+      if ($c1 =~ /\Q\$$v1 =~\E\s*(.+)$/ && $c2 =~ /\Q\$$v1 =~\E\s*\1/) {
+        printf "  [%s:%d] duplicate regex match %s\n",
+               $file, $inner->start->location->[0], $1;
+        next;
+      }
     }
   }
 }
