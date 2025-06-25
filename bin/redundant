@@ -1,91 +1,158 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+
 use PPI;
+use Scalar::Util qw(blessed looks_like_number);
 
-# operator‐strength ranking
-my %rank = (
-  '>'  => 3, '>=' => 2,
-  '==' => 1, 'eq' => 1,
-  '<=' => 2, '<'  => 3,
-);
-
+# parse “$var op val” or flipped “val op $var” → ($var, $op, $val)
 sub parse_cond {
-  my $s = shift;
-  $s =~ s/^\s*\(//;  $s =~ s/\)\s*$//;
-  if ($s =~ /^\s*\$(\w+)\s*(>=|>|==|<=|<|eq|ne)\s*(.+?)\s*$/) {
-    return ($1, $2, $3);
-  }
-  if ($s =~ /^\s*(.+?)\s*(>=|>|==|<=|<|eq|ne)\s*\$(\w+)\s*$/) {
-    my ($val,$op,$var) = ($1,$2,$3);
-    my %flip = ('<' => '>', '<=' => '>=',
-                '>' => '<', '>=' => '<=',
-                '==' => '==','eq'=>'eq','ne'=>'ne');
-    return ($var, $flip{$op}, $val);
-  }
-  return;
+	my $s = shift;
+	$s =~ s/^\s*\(//;	$s =~ s/\)\s*$//;
+	if ($s =~ /^\s*\$(\w+)\s*(>=|>|==|<=|<|eq|ne)\s*(.+?)\s*$/) {
+		return ($1, $2, $3);
+	}
+	if ($s =~ /^\s*(.+?)\s*(>=|>|==|<=|<|eq|ne)\s*\$(\w+)\s*$/) {
+		my ($val, $op, $var) = ($1, $2, $3);
+		my %flip = (
+			'<'	=> '>', '<=' => '>=',
+			'>'	=> '<', '>=' => '<=',
+			'==' => '==','eq' => 'eq','ne'=>'ne'
+		);
+		return ($var, $flip{$op}, $val);
+	}
+	return;
+}
+
+# Try to turn “val” into a plain number, or return undef if we can’t
+sub coerce_number {
+	my ($val) = @_;
+
+	# 1) DateTime → epoch
+	if (blessed($val) && $val->isa('DateTime')) {
+		return $val->epoch;
+	}
+
+	# 2) Anything that looks like a number
+	return 0 + $val if looks_like_number($val);
+
+	# 3) Strings that parse as integers?
+	return int($val) if $val =~ /^\s*([+-]?\d+)\s*$/;
+
+	# 4) Bail out on anything else
+	return;
+}
+
+sub implies {
+	my ($opA,$vA,$opB,$vB) = map { "" . $_ } @_;	# stringify ops
+
+	# only our six ops
+	return unless $opA =~ /^(?:>=?|<=?|==|eq|ne)$/
+			 && $opB =~ /^(?:>=?|<=?|==|eq|ne)$/;
+
+	# coerce both sides—skip if either fails
+	return unless defined( my $nA = coerce_number($vA) )
+			 && defined( my $nB = coerce_number($vB) );
+
+	# now pure numeric relational
+	if ($opA =~ /^>=?$/ && $opB =~ /^>=?$/) {
+		return $nA >= $nB;
+	}
+	if ($opA =~ /^<=?$/ && $opB =~ /^<=?$/) {
+		return $nA <= $nB;
+	}
+
+	# (you can add ==/eq/ne handling here if you like)
+	return;
 }
 
 die "Usage: $0 file1.pl [file2.pl ...]\n" unless @ARGV;
+
 for my $file (@ARGV) {
-  print "\nScanning $file …\n";
-  my $doc = PPI::Document->new($file)
-    or warn "  ✗ parse failed: $@\n" and next;
+	print "\nScanning $file …\n";
+	my $doc = PPI::Document->new($file)
+		or warn "	✗ parse failed: $@\n" and next;
 
-  my $cmps = $doc->find('PPI::Statement::Compound') || [];
-  for my $outer (@$cmps) {
-    my $type1 = $outer->type;
-    next unless $type1 =~ /^(if|elsif|unless|while|until)$/;
-    my $cond1 = $outer->schild(1)->content;
-    my ($v1,$o1,$x1) = parse_cond($cond1) || ();
+	# find every if/elsif/unless/while/until
+	my $cmps = $doc->find('PPI::Statement::Compound') || [];
+	for my $stmt (@$cmps) {
+		my $type = $stmt->type;
+		next unless $type =~ /^(if|elsif|unless|while|until)$/;
 
-    # … boolean‐AND and OR checks as before …
-    # (omitted here for brevity; keep your existing AND/OR logic)
+		# raw condition text, including parens
+		my $raw_node = $stmt->schild(1)
+			or next;
+		my $raw = $raw_node->content;
 
-    # nested‐block checks
-    my $block = $outer->schild(2);
-    next unless $block and $block->isa('PPI::Structure::Block');
+		# 1) BOOLEAN‐AND/OR redundancy
+		# pull out all simple comparisons in the expression
+		my @parts = map { s/^\s+|\s+$//gr }
+					split /(?:&&|\|\|)/, $raw;
+		my @comps = grep { parse_cond($_) } @parts;
+		my @terms = map { [ parse_cond($_) ] } @comps;
+		if (@terms > 1) {
+			my $bool_op = $raw =~ /&&/ ? 'AND' : $raw =~ /\|\|/ ? 'OR' : '';
+			for my $i (0 .. $#terms-1) {
+				for my $j ($i+1 .. $#terms) {
+					my ($v1,$o1,$x1) = @{ $terms[$i] };
+					my ($v2,$o2,$x2) = @{ $terms[$j] };
+					next unless defined $v1 && defined $v2 && $v1 eq $v2;
+					if (implies($o1,$x1,$o2,$x2)) {
+						printf "	[%s:%d] “%s” redundant in %s with “%s”\n",
+							$file, $stmt->line_number, $comps[$j], $bool_op, $comps[$i];
+					}
+					elsif (implies($o2,$x2,$o1,$x1)) {
+						printf "	[%s:%d] “%s” redundant in %s with “%s”\n",
+							$file, $stmt->line_number, $comps[$i], $bool_op, $comps[$j];
+					}
+				}
+			}
+		}
 
-    my $inner_cmps = $block->find('PPI::Statement::Compound') || [];
-    for my $inner (@$inner_cmps) {
-      my $type2 = $inner->type;
-      next unless $type2 =~ /^(if|elsif|unless|while|until)$/;
-      my $cond2 = $inner->schild(1)->content;
-      my ($v2,$o2,$x2) = parse_cond($cond2) or next;
-      next unless defined $v1 && $v1 eq $v2;
+		# 2) NESTED‐BLOCK redundancy
+		# parse outer condition for numeric‐threshold checks
+		my ($ov, $oo, $ox) = parse_cond($raw) || ();
 
-      # numeric‐threshold redundancy
-      if (exists $rank{$o1} && exists $rank{$o2}) {
-        if ( $rank{$o1} == $rank{$o2} && $o1 =~ /[><]/ && $x2 <= $x1
-          || $rank{$o1} < $rank{$o2}
-             && (
-                ($o1 =~ />=?/ && $x2 <= $x1)
-             || ($o1 =~ /<=?/ && $x2 >= $x1)
-                )
-        ) {
-          printf "  [%s:%d] redundant “%s” under “%s”\n",
-                 $file, $inner->line_number, $cond2, $cond1;
-          next;
-        }
-      }
+		# locate the { … } block following this statement
+		my $block = $stmt->schild(2);
+		next unless $block && $block->isa('PPI::Structure::Block');
 
-      # identical/duplicate tests
-      if ($type1 eq $type2 && $cond1 eq $cond2) {
-        printf "  [%s:%d] nested identical %s(%s)\n",
-               $file, $inner->line_number, $type2, $cond2;
-        next;
-      }
-      if ($cond1 eq $cond2) {
-        printf "  [%s:%d] duplicate test “%s”\n",
-               $file, $inner->line_number, $cond2;
-        next;
-      }
+		# find inner compounds inside this block
+		my $inner_cmps = $block->find('PPI::Statement::Compound') || [];
+		for my $inner (@$inner_cmps) {
+			my $t2 = $inner->type;
+			next unless $t2 =~ /^(if|elsif|unless|while|until)$/;
+			my $c2 = $inner->schild(1)->content;
+			my ($iv,$io,$ix) = parse_cond($c2) or next;
+			next unless defined $ov && $iv eq $ov;
 
-      # duplicate regex‐match
-      if ($cond1 =~ /\Q\$$v1 =~\E\s*(.+)$/ && $cond2 =~ /\Q\$$v1 =~\E\s*\1/) {
-        printf "  [%s:%d] duplicate regex match %s\n",
-               $file, $inner->line_number, $1;
-      }
-    }
-  }
+			# a) numeric‐threshold redundancy
+			if (implies($oo,$ox,$io,$ix)) {
+				printf "	[%s:%d] redundant “%s” under “%s”\n",
+					$file, $inner->line_number, $c2, $raw;
+				next;
+			}
+
+			# b) identical structure (if/elsif/unless/while/until)
+			if ($type eq $t2 && $raw eq $c2) {
+				printf "	[%s:%d] nested identical %s(%s)\n",
+					$file, $inner->line_number, $t2, $c2;
+				next;
+			}
+
+			# c) exact duplicate
+			if ($raw eq $c2) {
+				printf "	[%s:%d] duplicate test “%s”\n",
+					$file, $inner->line_number, $c2;
+				next;
+			}
+
+			# d) duplicate regex‐match
+			if ($raw =~ /\Q\$$ov =~\E\s*(.+)$/ &&
+				$c2	=~ /\Q\$$ov =~\E\s*\1/) {
+				printf "	[%s:%d] duplicate regex match %s\n",
+					$file, $inner->line_number, $1;
+			}
+		}
+	}
 }
