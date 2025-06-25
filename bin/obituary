@@ -1,0 +1,38 @@
+use strict;
+use warnings;
+use LWP::UserAgent;
+use HTML::TreeBuilder::XPath;
+
+# URL of the page to scrape
+my $url = 'https://funeral-notices.co.uk/notice/phillips/5229503';
+
+# Create a user agent
+my $ua = LWP::UserAgent->new;
+$ua->agent("Mozilla/5.0");
+
+# Fetch the webpage
+my $response = $ua->get($url);
+die "Failed to fetch the webpage: ", $response->status_line unless $response->is_success;
+
+# Parse the HTML content
+my $tree = HTML::TreeBuilder::XPath->new;
+$tree->parse($response->decoded_content);
+$tree->eof;
+
+# Extract details using XPath
+my $name = $tree->findvalue('//h1[contains(@class, "fn")]');  # Adjust XPath as per the HTML structure
+my $age = $tree->findvalue('//p[contains(text(), "Age")]/following-sibling::text()');
+my $town = $tree->findvalue('//span[contains(@class, "locality")]'); # Adjust based on the structure
+
+# Clean up extracted data
+$name =~ s/^\s+|\s+$//g if $name;
+$age =~ s/^\s+|\s+$//g if $age;
+$town =~ s/^\s+|\s+$//g if $town;
+
+# Print extracted details
+print "Name: $name\n" if $name;
+print "Age: $age\n" if $age;
+print "Town: $town\n" if $town;
+
+# Cleanup the tree object
+$tree->delete;
