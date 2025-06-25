@@ -3,88 +3,111 @@ use strict;
 use warnings;
 use PPI;
 
-# operator “strength” ranking
+# “Strength” ranking for numeric operators
 my %rank = (
-  '>'  => 3, '>=' => 2,
-  '==' => 1, 'eq' => 1,
-  '<=' => 2, '<'  => 3,
+   '>'  => 3, '>=' => 2,
+   '==' => 1, 'eq' => 1,
+   '<=' => 2, '<'  => 3,
 );
 
+# parse “$var op value” (or flipped “value op $var”) → ($var, $op, $val)
 sub parse_cond {
-  my $str = shift;
-  $str =~ s/^\s*\(//;  $str =~ s/\)\s*$//;
-  if ($str =~ /^\s*\$(\w+)\s*(>=|>|==|<=|<|eq|ne)\s*(.+?)\s*$/) {
-    return ($1, $2, $3);
-  }
-  if ($str =~ /^\s*(.+?)\s*(>=|>|==|<=|<|eq|ne)\s*\$(\w+)\s*$/) {
-    my ($val, $op, $var) = ($1, $2, $3);
-    my %flip = ('<' => '>', '<=' => '>=', '>' => '<',
-                '>=' => '<=', '==' => '==', 'eq' => 'eq', 'ne' => 'ne');
-    return ($var, $flip{$op}, $val);
-  }
-  return;
+   my $str = shift;
+   $str =~ s/^\s*\(//; $str =~ s/\)\s*$//;
+   if ( $str =~ /^\s*\$(\w+)\s*(>=|>|==|<=|<|eq|ne)\s*(.+?)\s*$/ ) {
+      return ($1, $2, $3);
+   }
+   if ( $str =~ /^\s*(.+?)\s*(>=|>|==|<=|<|eq|ne)\s*\$(\w+)\s*$/ ) {
+      my ($val,$op,$var) = ($1,$2,$3);
+      my %flip = ('<' => '>', '<=' => '>=', '>' => '<',
+                  '>=' => '<=', '==' => '==', 'eq' => 'eq','ne'=>'ne');
+      return ($var, $flip{$op}, $val);
+   }
+   return;  # unrecognized
 }
 
 die "Usage: $0 file1.pl [file2.pl ...]\n" unless @ARGV;
-
 for my $file (@ARGV) {
-  print "\nScanning $file …\n";
-  my $doc = PPI::Document->new($file)
-    or warn "  ✗ Failed to parse $file: $@\n" and next;
+   print "\nScanning $file …\n";
+   my $doc = PPI::Document->new($file)
+      or warn "  ✗ parse failed: $@\n" and next;
 
-  my $ifs = $doc->find('PPI::Structure::If') || [];
-  for my $outer (@$ifs) {
-    my $c1 = $outer->schild(0)->content;
-    my ($v1,$o1,$x1) = parse_cond($c1) or next;
+   # grab all compound statements (if/elsif/unless/while/until)
+   my $cmps = $doc->find('PPI::Statement::Compound') || [];
+   OUTER: for my $outer (@$cmps) {
+      my $type1 = $outer->type;  # e.g. 'if','elsif','while','until','unless'
+      next unless $type1 =~ /^(if|elsif|while|until|unless)$/;
 
-    for my $inner (@$ifs) {
-      next if $inner == $outer;
-      # only scan direct children
-      next unless $inner->parent == $outer->block;
-      
-      my $c2 = $inner->schild(0)->content;
-      my ($v2,$o2,$x2) = parse_cond($c2) or next;
-      next unless $v1 eq $v2;
+      my $cond1 = $outer->schild(1)->content;    # "(…)"
+      my ($v1,$o1,$x1) = parse_cond($cond1) || ();
 
-      # 1) numeric‐threshold redundancy
-      if (exists $rank{$o1} && exists $rank{$o2}) {
-        if ($rank{$o1} == $rank{$o2} && $o1 =~ /[><]/ && $x2 <= $x1
-         || $rank{$o1} <  $rank{$o2}
-            && (
-               ($o1 =~ />=?/ && $x2 <= $x1)
-            || ($o1 =~ /<=?/ && $x2 >= $x1)
-               )
-        ) {
-          printf "  [%s:%d] redundant “%s” under “%s”\n",
-                 $file, $inner->start->location->[0], $c2, $c1;
-          next;
-        }
+      # Heuristic #5: boolean‐combo redundancy
+      if ($cond1 =~ /&&/) {
+         my @parts = map { my $t=$_; $t=~s/^\s+|\s+$//g; $t } split /&&/, $cond1;
+         for my $p (@parts) {
+            if ($p =~ /^\$(\w+)$/ and defined $v1) {
+               # find another part that tests same var with parse_cond
+               for my $q (@parts) {
+                  next if $q eq $p;
+                  my ($v2,$o2,$x2) = parse_cond($q) or next;
+                  if ($v2 eq $1 && exists $rank{$o2}) {
+                     printf "  [%s:%d] “%s” redundant in boolean AND with “%s”\n",
+                        $file, $outer->start->location->[0], $p, $q;
+                  }
+               }
+            }
+         }
       }
 
-      # 2) identical unless‐unless
-      if ($outer->schild(0)->content eq 'unless'
-       && $inner->schild(0)->content eq 'unless'
-       && $c1 eq $c2)
-      {
-        printf "  [%s:%d] nested identical %s\n",
-               $file, $inner->start->location->[0], "unless($c2)";
-        next;
-      }
+      # now look for NESTED compounds under this block
+      for my $inner (@$cmps) {
+         next if $inner == $outer;
+         # only direct children
+         next unless $inner->parent and $inner->parent == $outer->schild(2);
 
-      # 3) exact‐text duplicate
-      if ($c1 eq $c2) {
-        printf "  [%s:%d] duplicate test “%s”\n",
-               $file, $inner->start->location->[0], $c2;
-        next;
-      }
+         my $type2 = $inner->type;
+         next unless $type2 =~ /^(if|elsif|while|until|unless)$/;
+         my $cond2 = $inner->schild(1)->content;
+         my ($v2,$o2,$x2) = parse_cond($cond2) or next;
+         next unless defined $v1 && $v1 eq $v2;
 
-      # 4) duplicate regex‐match
-      if ($c1 =~ /\Q\$$v1 =~\E\s*(.+)$/ && $c2 =~ /\Q\$$v1 =~\E\s*\1/) {
-        printf "  [%s:%d] duplicate regex match %s\n",
+         # 1) numeric‐threshold redundancy
+         if (exists $rank{$o1} and exists $rank{$o2}) {
+            if ( $rank{$o1} == $rank{$o2}
+               && $o1 =~ /[><]/ && $x2 <= $x1
+               || $rank{$o1} < $rank{$o2}
+                  && (
+                     ($o1 =~ />=?/ && $x2 <= $x1)
+                  || ($o1 =~ /<=?/ && $x2 >= $x1)
+                     )
+            ) {
+               printf "  [%s:%d] redundant “%s” under “%s”\n",
+                 $file, $inner->start->location->[0], $cond2, $cond1;
+               next;
+            }
+         }
+
+         # 2) identical unless/unless or if/elsif same
+         if ($type1 eq $type2 and $cond1 eq $cond2) {
+            printf "  [%s:%d] nested identical %s(%s)\n",
+               $file, $inner->start->location->[0], $type2, $cond2;
+            next;
+         }
+
+         # 3) exact‐text duplicate
+         if ($cond1 eq $cond2) {
+            printf "  [%s:%d] duplicate test “%s”\n",
+               $file, $inner->start->location->[0], $cond2;
+            next;
+         }
+
+         # 4) duplicate regex‐match
+         if ($cond1 =~ /\Q\$$v1 =~\E\s*(.+)$/ and $cond2 =~ /\Q\$$v1 =~\E\s*\1/) {
+            printf "  [%s:%d] duplicate regex match %s\n",
                $file, $inner->start->location->[0], $1;
-        next;
+            next;
+         }
       }
-    }
-  }
+   }
 }
 
