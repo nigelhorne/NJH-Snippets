@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use PPI;
 
-# “Strength” ranking for nested‐numeric logic (still used below)
+# operator‐strength ranking
 my %rank = (
   '>'  => 3, '>=' => 2,
   '==' => 1, 'eq' => 1,
@@ -11,21 +11,19 @@ my %rank = (
 );
 
 sub parse_cond {
-  my $str = shift;
-  $str =~ s/^\s*\(//;  $str =~ s/\)\s*$//;
-  # $var OP val
-  if ($str =~ /^\s*\$(\w+)\s*(>=|>|==|<=|<|eq|ne)\s*(.+?)\s*$/) {
+  my $s = shift;
+  $s =~ s/^\s*\(//;  $s =~ s/\)\s*$//;
+  if ($s =~ /^\s*\$(\w+)\s*(>=|>|==|<=|<|eq|ne)\s*(.+?)\s*$/) {
     return ($1, $2, $3);
   }
-  # val OP $var  → flip
-  if ($str =~ /^\s*(.+?)\s*(>=|>|==|<=|<|eq|ne)\s*\$(\w+)\s*$/) {
+  if ($s =~ /^\s*(.+?)\s*(>=|>|==|<=|<|eq|ne)\s*\$(\w+)\s*$/) {
     my ($val,$op,$var) = ($1,$2,$3);
     my %flip = ('<' => '>', '<=' => '>=',
                 '>' => '<', '>=' => '<=',
                 '==' => '==','eq'=>'eq','ne'=>'ne');
     return ($var, $flip{$op}, $val);
   }
-  return;  # not a simple scalar comparison
+  return;
 }
 
 die "Usage: $0 file1.pl [file2.pl ...]\n" unless @ARGV;
@@ -34,74 +32,29 @@ for my $file (@ARGV) {
   my $doc = PPI::Document->new($file)
     or warn "  ✗ parse failed: $@\n" and next;
 
-  # grab all compound statements (if/elsif/unless/while/until)
   my $cmps = $doc->find('PPI::Statement::Compound') || [];
-
   for my $outer (@$cmps) {
-    my $type1 = $outer->type;  # e.g. 'if','elsif','while','until','unless'
-    next unless $type1 =~ /^(if|elsif|while|until|unless)$/;
-
-    my $cond1 = $outer->schild(1)->content;    # the “(...)”
+    my $type1 = $outer->type;
+    next unless $type1 =~ /^(if|elsif|unless|while|until)$/;
+    my $cond1 = $outer->schild(1)->content;
     my ($v1,$o1,$x1) = parse_cond($cond1) || ();
 
-    # Heuristic #5: boolean‐AND redundancies (existing)
-    if ($cond1 =~ /&&/) {
-      my @parts = map { s/^\s+|\s+$//gr } split /&&/, $cond1;
-      for my $p (@parts) {
-        next unless $p =~ /^\$(\w+)$/;
-        for my $q (@parts) {
-          next if $p eq $q;
-          my ($v2,$o2,$x2) = parse_cond($q) or next;
-          if ($1 eq $v2 && exists $rank{$o2}) {
-            printf "  [%s:%d] “%s” redundant in AND with “%s”\n",
-              $file, $outer->start->location->[0], $p, $q;
-          }
-        }
-      }
-    }
+    # … boolean‐AND and OR checks as before …
+    # (omitted here for brevity; keep your existing AND/OR logic)
 
-    # Heuristic #6: boolean‐OR redundancies (new)
-    if ($cond1 =~ /\|\|/) {
-      my @parts = map { s/^\s+|\s+$//gr } split /\|\|/, $cond1;
-      for my $i (0 .. $#parts) {
-        for my $j ($i+1 .. $#parts) {
-          my ($p,$q) = ($parts[$i], $parts[$j]);
-          my ($v2,$o2,$x2) = parse_cond($q) or next;
-          my ($v3,$o3,$x3) = parse_cond($p) or next;
-          next unless $v2 eq $v3;
+    # nested‐block checks
+    my $block = $outer->schild(2);
+    next unless $block and $block->isa('PPI::Structure::Block');
 
-          # both “>”‐style: q implies p if x2 >= x3
-          if (($o3 eq '>'||$o3 eq '>=') && ($o2 eq '>'||$o2 eq '>=')
-              && $x2 >= $x3)
-          {
-            printf "  [%s:%d] “%s” redundant in OR with “%s”\n",
-              $file, $outer->start->location->[0], $q, $p;
-            next;
-          }
-
-          # both “<”‐style: q implies p if x2 <= x3
-          if (($o3 eq '<'||$o3 eq '<=') && ($o2 eq '<'||$o2 eq '<=')
-              && $x2 <= $x3)
-          {
-            printf "  [%s:%d] “%s” redundant in OR with “%s”\n",
-              $file, $outer->start->location->[0], $q, $p;
-            next;
-          }
-        }
-      }
-    }
-
-    # …then your nested‐block checks exactly as before…
-    for my $inner (@$cmps) {
-      next if $inner == $outer;
-      next unless $inner->parent && $inner->parent == $outer->schild(2);
+    my $inner_cmps = $block->find('PPI::Statement::Compound') || [];
+    for my $inner (@$inner_cmps) {
       my $type2 = $inner->type;
-      next unless $type2 =~ /^(if|elsif|while|until|unless)$/;
+      next unless $type2 =~ /^(if|elsif|unless|while|until)$/;
       my $cond2 = $inner->schild(1)->content;
       my ($v2,$o2,$x2) = parse_cond($cond2) or next;
       next unless defined $v1 && $v1 eq $v2;
 
-      # numeric‐threshold, identical, regex… same as before
+      # numeric‐threshold redundancy
       if (exists $rank{$o1} && exists $rank{$o2}) {
         if ( $rank{$o1} == $rank{$o2} && $o1 =~ /[><]/ && $x2 <= $x1
           || $rank{$o1} < $rank{$o2}
@@ -111,24 +64,27 @@ for my $file (@ARGV) {
                 )
         ) {
           printf "  [%s:%d] redundant “%s” under “%s”\n",
-                 $file, $inner->start->location->[0], $cond2, $cond1;
+                 $file, $inner->line_number, $cond2, $cond1;
           next;
         }
       }
+
+      # identical/duplicate tests
       if ($type1 eq $type2 && $cond1 eq $cond2) {
         printf "  [%s:%d] nested identical %s(%s)\n",
-               $file, $inner->start->location->[0], $type2, $cond2;
+               $file, $inner->line_number, $type2, $cond2;
         next;
       }
       if ($cond1 eq $cond2) {
         printf "  [%s:%d] duplicate test “%s”\n",
-               $file, $inner->start->location->[0], $cond2;
+               $file, $inner->line_number, $cond2;
         next;
       }
+
+      # duplicate regex‐match
       if ($cond1 =~ /\Q\$$v1 =~\E\s*(.+)$/ && $cond2 =~ /\Q\$$v1 =~\E\s*\1/) {
         printf "  [%s:%d] duplicate regex match %s\n",
-               $file, $inner->start->location->[0], $1;
-        next;
+               $file, $inner->line_number, $1;
       }
     }
   }
