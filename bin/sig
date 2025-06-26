@@ -38,12 +38,12 @@ my $sig_name = "NJH.Spam.$timestamp";
 my $sig_line = "$sig_name:$hex_digest:$length\n";
 
 # Append to signature file
-open my $fh, '>>', $sig_file or die "Cannot open $sig_file: $!";
+open my $fh, '>>', $sig_file or die "Cannot open $sig_file: $!\n$sig_line\n";
 print $fh $sig_line;
 close $fh;
 
 # Log to syslog
-openlog("add_spam_signature", "pid", "user");
+openlog('add_spam_signature', 'pid', 'user');
 syslog("info", "Added ClamAV signature $sig_name to $sig_file");
 closelog();
 
