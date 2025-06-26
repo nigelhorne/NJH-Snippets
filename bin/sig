@@ -1,0 +1,66 @@
+#!/usr/bin/env perl
+#
+use strict;
+use warnings;
+
+use Digest::SHA qw(sha256_hex);
+use File::Temp qw(tempfile);
+use File::Basename;
+use POSIX qw(strftime);
+use Sys::Syslog;
+
+# Configuration
+my $sig_file = '/var/lib/clamav/njh.hdb';   # Adjust as necessary
+# my $clamd_pid_file = '/var/run/clamd.pid';  # Adjust to your system
+my $clamd_pid_file;
+
+# Read email (from file or STDIN)
+my $email_content = do {
+	local $/;
+	<>;  # slurp
+};
+
+die "Email content is empty\n" unless $email_content;
+
+# Normalize line endings and strip headers for consistency
+$email_content =~ s/\r\n/\n/g;
+$email_content =~ s/\A.*?\n\n//s;  # Remove headers (optional)
+
+# Generate SHA256 hash
+my $hex_digest = sha256_hex($email_content);
+my $length = length($email_content);
+
+# Generate signature name
+my $timestamp = strftime("%Y%m%d%H%M%S", localtime);
+my $sig_name = "NJH.Spam.$timestamp";
+
+# Create HDB signature line
+my $sig_line = "$sig_name:$hex_digest:$length\n";
+
+# Append to signature file
+open my $fh, '>>', $sig_file or die "Cannot open $sig_file: $!";
+print $fh $sig_line;
+close $fh;
+
+# Log to syslog
+openlog("add_spam_signature", "pid", "user");
+syslog("info", "Added ClamAV signature $sig_name to $sig_file");
+closelog();
+
+if($clamd_pid_file) {
+	# Signal clamd to reload
+	my $pid;
+	if(open my $pfh, '<', $clamd_pid_file) {
+		chomp($pid = <$pfh>);
+		close $pfh;
+	} else {
+		die "Unable to read $clamd_pid_file: $!";
+	}
+
+	if ($pid =~ /^\d+$/) {
+		kill 'USR2', $pid or die "Failed to send USR2 to clamd (PID $pid): $!";
+		print "ClamAV notified to reload $sig_file (SIGUSR2 to PID $pid)\n";
+	} else {
+		die "Invalid PID in $clamd_pid_file\n";
+	}
+}
