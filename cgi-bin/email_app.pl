@@ -46,6 +46,7 @@ my $tt = Template->new({
 
 # Simple session storage (in production, use proper session management)
 my $session_file = '/tmp/email_sessions.dat';
+my $captcha_file = '/tmp/email_captchas.dat';
 
 print $cgi->header('text/html');
 
@@ -65,6 +66,15 @@ if ($action eq 'initial_form') {
 }
 
 sub show_initial_form {
+    # Generate simple maths captcha
+    my $num1 = int(rand(10)) + 1;
+    my $num2 = int(rand(10)) + 1;
+    my $captcha_answer = $num1 + $num2;
+    my $captcha_token = sha256_hex($captcha_answer . time() . rand());
+
+    # Store captcha answer temporarily
+    store_captcha($captcha_token, $captcha_answer);
+
     my $template = q{
 <!DOCTYPE html>
 <html>
@@ -78,6 +88,8 @@ sub show_initial_form {
         input[type="submit"] { background-color: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
         input[type="submit"]:hover { background-color: #005a87; }
         .header { text-align: center; margin-bottom: 30px; }
+	.captcha { background-color: #f8f9fa; padding: 15px; border-radius: 4px; border: 1px solid #dee2e6; }
+	.captcha-question { font-size: 18px; font-weight: bold; color: #495057; }
     </style>
 </head>
 <body>
@@ -99,6 +111,14 @@ sub show_initial_form {
             <input type="text" id="name" name="name" required>
         </div>
         
+	<div class="form-group">
+            <div class="captcha">
+                <label for="captcha_answer">Security Check:</label>
+                <div class="captcha-question">What is [% num1 %] + [% num2 %] ?</div>
+                <input type="number" id="captcha_answer" name="captcha_answer" required min="1" max="20" style="width: 100px; margin-top: 5px;">
+            </div>
+        </div>
+
         <div class="form-group">
             <input type="submit" value="Send Verification Link">
         </div>
@@ -107,17 +127,38 @@ sub show_initial_form {
 </html>
     };
     
-    $tt->process(\$template) || die $tt->error();
+        $tt->process(\$template, {
+        num1 => $num1,
+        num2 => $num2,
+        captcha_token => $captcha_token
+    }) || die $tt->error();
 }
 
 sub send_verification_email {
     my $email = $cgi->param('email');
     my $name = $cgi->param('name');
-    
-    unless ($email && $name) {
-        show_error("Please provide both email and name");
+    my $captcha_answer = $cgi->param('captcha_answer');
+    my $captcha_token = $cgi->param('captcha_token');
+
+    unless ($email && $name && defined $captcha_answer && $captcha_token) {
+        show_error("Please provide all required fields including the security check");
         return;
     }
+
+    # Verify captcha
+    my $expected_answer = get_captcha($captcha_token);
+    unless (defined $expected_answer) {
+        show_error("Invalid security check - please try again");
+        return;
+    }
+
+    unless ($captcha_answer == $expected_answer) {
+        show_error("Incorrect answer to security check - please try again");
+        return;
+    }
+
+    # Clean up used captcha
+    delete_captcha($captcha_token);
     
     # Generate verification token
     my $token = sha256_hex($email . time() . rand());
@@ -385,6 +426,114 @@ sub send_final_email {
         subject => $subject,
         base_url => $BASE_URL
     }) || die $tt->error();
+}
+
+sub store_captcha {
+    my ($token, $answer) = @_;
+
+    my $captchas = {};
+    if (-f $captcha_file) {
+        eval {
+            open my $fh, '<', $captcha_file or die "Can't read captcha file: $!";
+            local $/;
+            my $content = <$fh>;
+            close $fh;
+            if ($content && $content =~ /\S/) {
+                my $VAR1;
+                $captchas = eval $content;
+                $captchas = {} unless ref $captchas eq 'HASH';
+            }
+        };
+        $captchas = {} if $@;
+    }
+
+    # Store with timestamp for cleanup
+    $captchas->{$token} = {
+        answer => $answer,
+        timestamp => time()
+    };
+
+    # Clean up old captchas (older than 10 minutes)
+    my $cutoff = time() - 600;
+    foreach my $key (keys %$captchas) {
+        delete $captchas->{$key} if $captchas->{$key}->{timestamp} < $cutoff;
+    }
+
+    eval {
+        open my $fh, '>', $captcha_file or die "Can't write captcha file: $!";
+        my $dumper = Data::Dumper->new([$captchas]);
+        $dumper->Purity(1);
+        $dumper->Terse(1);
+        print $fh $dumper->Dump();
+        close $fh;
+        chmod 0600, $captcha_file;
+    };
+    die "Failed to store captcha: $@" if $@;
+}
+
+sub get_captcha {
+    my ($token) = @_;
+
+    return undef unless -f $captcha_file;
+    return undef unless $token;
+
+    my $captchas = {};
+    eval {
+        open my $fh, '<', $captcha_file or die "Can't read captcha file: $!";
+        local $/;
+        my $content = <$fh>;
+        close $fh;
+
+        if ($content && $content =~ /\S/) {
+            my $VAR1;
+            $captchas = eval $content;
+            $captchas = {} unless ref $captchas eq 'HASH';
+        }
+    };
+
+    return undef if $@ || !exists $captchas->{$token};
+
+    # Check if captcha is expired (10 minutes)
+    my $captcha_data = $captchas->{$token};
+    if (time() - $captcha_data->{timestamp} > 600) {
+        return undef;
+    }
+
+    return $captcha_data->{answer};
+}
+
+sub delete_captcha {
+    my ($token) = @_;
+
+    return unless -f $captcha_file;
+    return unless $token;
+
+    my $captchas = {};
+    eval {
+        open my $fh, '<', $captcha_file or die "Can't read captcha file: $!";
+        local $/;
+        my $content = <$fh>;
+        close $fh;
+
+        if ($content && $content =~ /\S/) {
+            my $VAR1;
+            $captchas = eval $content;
+            $captchas = {} unless ref $captchas eq 'HASH';
+        }
+    };
+
+    return if $@;
+
+    delete $captchas->{$token};
+
+    eval {
+        open my $fh, '>', $captcha_file or die "Can't write captcha file: $!";
+        my $dumper = Data::Dumper->new([$captchas]);
+        $dumper->Purity(1);
+        $dumper->Terse(1);
+        print $fh $dumper->Dump();
+        close $fh;
+    };
 }
 
 sub store_session {
