@@ -133,7 +133,7 @@ sub send_verification_email {
 Hello $name,
 
 You, or someone claiming to be you, has requested to send an email from this site.
-If it was you, please click the link below.  If it was not, please disreagard this message.
+If it was you, please click the link below.  If it was not, please disregard this message.
 
 Please click the link below to compose and send your email:
 
