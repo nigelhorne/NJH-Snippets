@@ -164,7 +164,7 @@ sub send_verification_email {
     my $token = sha256_hex($email . time() . rand());
     
     # Store session data (in production, use proper database/session storage)
-    store_session($token, { email => $email, name => $name, timestamp => time() });
+    store_session($token, { email => $email, name => $name, timestamp => time(), captcha_token => $captcha_token, remote_addr => $ENV{'REMOTE_ADDR'} || 'undef' });
     
     # Create verification link
     my $verify_link = "$BASE_URL?action=compose&token=$token";
@@ -449,6 +449,7 @@ sub store_captcha {
 
     # Store with timestamp for cleanup
     $captchas->{$token} = {
+	remote_addr => $ENV{'REMOTE_ADDR'} || 'undef',
         answer => $answer,
         timestamp => time()
     };
