@@ -1,0 +1,118 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use LWP::UserAgent;
+use HTML::TreeBuilder;
+use URI;
+
+# Usage: seo_check.pl [--mobile] <URL>
+my $is_mobile = 0;
+my $url;
+
+# Parse command-line args
+while (@ARGV) {
+    my $arg = shift;
+    if ($arg eq '--mobile') {
+        $is_mobile = 1;
+    } elsif (!$url) {
+        $url = $arg;
+    } else {
+        die "Usage: $0 [--mobile] <URL>\n";
+    }
+}
+
+die "Usage: $0 [--mobile] <URL>\n" unless $url;
+
+# Set up user agent
+my $ua = LWP::UserAgent->new;
+
+# $ua->agent("SEOAnalyzer/1.0");
+
+if ($is_mobile) {
+    $ua->agent("Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.198 Mobile Safari/537.36");
+    print "📱 Using mobile User-Agent\n";
+} else {
+    $ua->agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.198 Safari/537.36");
+    print "🖥️ Using desktop User-Agent\n";
+}
+
+$ua->default_header('Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
+$ua->default_header('Accept-Language' => 'en-US,en;q=0.5');
+$ua->default_header('Connection' => 'keep-alive');
+
+# Fetch the page
+my $response = $ua->get($url);
+die "Failed to fetch $url: ", $response->status_line unless $response->is_success;
+my $final_url = $response->request->uri->as_string;
+my $html = $response->decoded_content;
+
+# Parse HTML
+my $tree = HTML::TreeBuilder->new;
+$tree->parse($html);
+$tree->eof;
+
+# Check <title>
+my $title = $tree->look_down(_tag => 'title');
+if ($title) {
+    my $title_text = $title->as_text;
+    print "✅ Title found (${\length($title_text)} chars): $title_text\n";
+    print "⚠️  Title too long (> 60 chars)\n" if length($title_text) > 60;
+} else {
+    print "❌ No <title> tag found\n";
+}
+
+# Check <meta name="description">
+my ($desc) = $tree->look_down(_tag => 'meta', name => 'description');
+if ($desc && $desc->attr('content')) {
+    my $content = $desc->attr('content');
+    print "✅ Meta description found (${\length($content)} chars): $content\n";
+    print "⚠️  Description too long (> 160 chars)\n" if length($content) > 160;
+} else {
+    print "❌ No meta description tag found\n";
+}
+
+# Check <h1>
+my @h1s = $tree->look_down(_tag => 'h1');
+if (@h1s) {
+    print "✅ Found ", scalar(@h1s), " <h1> tag(s)\n";
+    print "⚠️  More than one <h1> tag found\n" if @h1s > 1;
+} else {
+    print "❌ No <h1> tag found\n";
+}
+
+# Check <img> alt attributes
+my @imgs = $tree->look_down(_tag => 'img');
+my $missing_alt = grep { !defined($_->attr('alt')) || $_->attr('alt') eq '' } @imgs;
+print "🖼️  Found ", scalar(@imgs), " image(s)\n";
+print "⚠️  $missing_alt image(s) missing alt attributes\n" if $missing_alt;
+
+# Check <a> text
+my @links = $tree->look_down(_tag => 'a');
+my $empty_anchors = grep { $_->as_text =~ /^\s*$/ } @links;
+print "🔗 Found ", scalar(@links), " link(s)\n";
+print "⚠️  $empty_anchors link(s) with empty or no anchor text\n" if $empty_anchors;
+
++# Check canonical URL
+my @canonicals = $tree->look_down(_tag => 'link', rel => 'canonical');
+if (!@canonicals) {
+    print "❌ No canonical <link rel=\"canonical\"> tag found\n";
+	my $suggested = URI->new($final_url)->clone;
+	$suggested->query(undef);  # Strip query parameters
+	print "💡 Suggested canonical: $suggested\n";
+} elsif (scalar(@canonicals) > 1) {
+    print "⚠️  Multiple canonical tags found (", scalar(@canonicals), ")\n";
+    for my $c (@canonicals) {
+        print " - ", ($c->attr('href') // '[missing href]'), "\n";
+    }
+} else {
+    my $href = $canonicals[0]->attr('href');
+    if ($href) {
+        my $abs = URI->new_abs($href, $url);
+        print "✅ Canonical URL: $abs\n";
+    } else {
+        print "⚠️  Canonical tag present but missing href attribute\n";
+    }
+}
+
+
+$tree->delete;
