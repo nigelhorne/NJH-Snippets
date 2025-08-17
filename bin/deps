@@ -22,7 +22,11 @@
 # XML::Simple => perl-xml-simple
 
 # FreeBSD
+# IO::Socket::SSL => p5-IO-Socket-SSL
+# Mozilla::CA => p5-Mozilla-CA
+# Net::SSLeay: p5-Net-SSLeay
 # Parallel::ForkManager => p5-Parallel-ForkManager
+# URI: p5-URI
 # XML::Parser => p5-XML-Parser
 
 # OpenBSD
