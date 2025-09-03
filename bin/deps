@@ -26,6 +26,7 @@
 # Mozilla::CA => p5-Mozilla-CA
 # Net::SSLeay: p5-Net-SSLeay
 # Parallel::ForkManager => p5-Parallel-ForkManager
+# Sys::Info => p5-Sys-Info
 # URI: p5-URI
 # XML::Parser => p5-XML-Parser
 

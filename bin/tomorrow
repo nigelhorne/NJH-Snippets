@@ -2,7 +2,7 @@
 
 use Date::Calc;
 
-my @months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oc", "Nov", "Dec");
+my @months = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
 
 # my @tomorrow = Date::Calc::Add_Delta_Days(Date::Calc::Today(), 1);
 
