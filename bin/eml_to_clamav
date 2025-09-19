@@ -36,7 +36,7 @@ foreach my $file (@eml_files) {
 print 'Processing ', scalar(@eml_files), " EML file(s)\n" if $verbose;
 
 # Open output file for signatures
-open(my $sig_fh, '>', $output_file) or die "Cannot open $output_file: $!";
+open(my $sig_fh, '>>', $output_file) or die "Cannot open $output_file: $!";
 print "Writing signatures to: $output_file\n" if $verbose;
 
 my $total_signatures = 0;
@@ -44,7 +44,7 @@ my $total_attachments = 0;
 
 # Process each EML file
 foreach my $eml_file (@eml_files) {
-	print "\n" . "="x50 . "\n" if $verbose;
+	print "\n" . '='x50 . "\n" if $verbose;
 	print "Processing EML file: $eml_file\n" if $verbose;
 
 	# Create temporary directory for parsing this file
