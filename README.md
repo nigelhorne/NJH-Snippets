@@ -4,10 +4,14 @@
 
 Code snippets
 
-## dbpedia_location
+## dbpedia\_location
 
 Query DBpedia for Geocoding.
 Also produces OSM HTML.
+
+## eml\_to\_clamav
+
+Produce **ClamAV** signatures from emails
 
 ## format
 
@@ -30,7 +34,7 @@ to a specified destination via TCP, UDP, or a serial port.
 Additionally,
 it supports outputting the S-records to standard output for debugging or testing.
 
-## server_dashboard
+## server\_dashboard
 
 This script creates a web dashboard that monitors the status of a list of web servers.
 It uses the **Mojolicious** framework to build a simple web interface that shows the server status, HTTP response codes, response time, and color-coded indicators (green for healthy servers, yellow for errors like 404 or 500, and red for unreachable servers).
