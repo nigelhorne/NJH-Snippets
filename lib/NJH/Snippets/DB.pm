@@ -683,7 +683,7 @@ sub AUTOLOAD {
 			my ($key, $value) = %params;
 			if(my $data = $self->{'data'}) {
 				foreach my $row(@{$data}) {
-					if(($row->{$key} eq $value) && (my $rc = $row->{$column})) {
+					if(defined($row->{$key}) && ($row->{$key} eq $value) && (my $rc = $row->{$column})) {
 						if($self->{'logger'}) {
 							$self->{'logger'}->trace("AUTOLOAD return '$rc' from slurped data");
 						}
