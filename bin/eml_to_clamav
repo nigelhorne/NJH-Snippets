@@ -1,0 +1,249 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use MIME::Parser;
+use Digest::MD5 qw(md5_hex);
+use Digest::SHA qw(sha1_hex sha256_hex);
+use File::Temp qw(tempdir);
+use File::Basename;
+use Getopt::Long;
+use Pod::Usage;
+
+# Global variables
+my $output_file = 'signatures.hdb';
+my $sig_prefix = 'NJH';
+my $help = 0;
+my $verbose = 0;
+
+# Parse command line options
+GetOptions(
+	'output|o=s'   => \$output_file,
+	'prefix|p=s'   => \$sig_prefix,
+	'verbose|v'	=> \$verbose,
+	'help|h'	   => \$help,
+) or pod2usage(2);
+
+pod2usage(1) if $help;
+pod2usage('Error: No EML file specified') if @ARGV == 0;
+
+my $eml_file = $ARGV[0];
+
+# Check if input file exists
+die "Error: File '$eml_file' does not exist" unless -f $eml_file;
+
+print "Processing EML file: $eml_file\n" if $verbose;
+
+# Create temporary directory for parsing
+my $temp_dir = tempdir(CLEANUP => 1);
+print "Using temporary directory: $temp_dir\n" if $verbose;
+
+# Initialize MIME parser
+my $parser = MIME::Parser->new();
+$parser->output_dir($temp_dir);
+$parser->extract_nested_messages(1);
+$parser->extract_uuencode(1);
+
+# Parse the EML file
+my $entity;
+eval {
+	$entity = $parser->parse_open($eml_file);
+};
+if ($@) {
+	die "Error parsing EML file: $@";
+}
+
+# Open output file for signatures
+open(my $sig_fh, '>', $output_file) or die "Cannot open $output_file: $!";
+print "Writing signatures to: $output_file\n" if $verbose;
+
+# Generate signature for the main email
+generate_email_signature($entity, $sig_fh);
+
+# Process attachments
+my @parts = $entity->parts_DFS;
+my $attachment_count = 0;
+
+foreach my $part (@parts) {
+	if ($part->effective_type ne 'text/plain' && 
+		$part->effective_type ne 'text/html' && 
+		$part->effective_type ne 'multipart/mixed' &&
+		$part->effective_type ne 'multipart/alternative' &&
+		$part->effective_type ne 'multipart/related') {
+		
+		my $filename = get_attachment_filename($part);
+		print "Processing attachment: $filename\n" if $verbose;
+		
+		generate_attachment_signature($part, $filename, $attachment_count++, $sig_fh);
+	}
+}
+
+close($sig_fh);
+print "\nSignature generation complete!\n";
+print "Generated signatures written to: $output_file\n";
+
+# Clean up
+$entity->purge;
+
+sub generate_email_signature {
+	my ($entity, $fh) = @_;
+	
+	# Get email headers
+	my $head = $entity->head;
+	my $subject = $head->get('Subject', 0) || '';
+	my $from = $head->get('From', 0) || '';
+	my $to = $head->get('To', 0) || '';
+	
+	chomp($subject, $from, $to);
+	
+	# Create a signature string from key headers
+	my $sig_data = "Subject: $subject\nFrom: $from\nTo: $to";
+	
+	# Generate hashes
+	my $md5 = md5_hex($sig_data);
+	my $sha1 = sha1_hex($sig_data);
+	my $sha256 = sha256_hex($sig_data);
+	
+	# Write signatures in ClamAV hash database format
+	# Format: hash:size:malware_name
+	my $size = length($sig_data);
+	
+	print $fh "$md5:$size:${sig_prefix}_EMAIL_HEADERS_MD5\n";
+	print $fh "$sha1:$size:${sig_prefix}_EMAIL_HEADERS_SHA1\n";
+	print $fh "$sha256:$size:${sig_prefix}_EMAIL_HEADERS_SHA256\n";
+	
+	if ($verbose) {
+		print "Generated email header signatures:\n";
+		print "  MD5: $md5\n";
+		print "  SHA1: $sha1\n";
+		print "  SHA256: $sha256\n";
+		print "  Size: $size bytes\n";
+	}
+}
+
+sub generate_attachment_signature {
+	my ($part, $filename, $index, $fh) = @_;
+	
+	# Get attachment body
+	my $body = $part->bodyhandle;
+	return unless $body;
+	
+	my $data;
+	if ($body->path) {
+		# Read from file
+		open(my $att_fh, '<', $body->path) or return;
+		binmode($att_fh);
+		local $/;
+		$data = <$att_fh>;
+		close($att_fh);
+	} else {
+		# Get from memory
+		$data = $body->as_string;
+	}
+	
+	return unless defined $data && length($data) > 0;
+	
+	# Generate hashes
+	my $md5 = md5_hex($data);
+	my $sha1 = sha1_hex($data);
+	my $sha256 = sha256_hex($data);
+	my $size = length($data);
+	
+	# Clean filename for signature name
+	$filename =~ s/[^a-zA-Z0-9._-]/_/g;
+	$filename = "ATTACHMENT_${index}" if !$filename || $filename eq '';
+	
+	# Write signatures
+	print $fh "$md5:$size:${sig_prefix}_${filename}_MD5\n";
+	print $fh "$sha1:$size:${sig_prefix}_${filename}_SHA1\n";
+	print $fh "$sha256:$size:${sig_prefix}_${filename}_SHA256\n";
+	
+	if ($verbose) {
+		print "Generated attachment signatures for '$filename':\n";
+		print "  MD5: $md5\n";
+		print "  SHA1: $sha1\n";
+		print "  SHA256: $sha256\n";
+		print "  Size: $size bytes\n";
+	}
+}
+
+sub get_attachment_filename {
+	my ($part) = @_;
+	
+	my $filename = $part->head->recommended_filename;
+	
+	if (!$filename) {
+		# Try Content-Disposition header
+		my $disp = $part->head->get('Content-Disposition', 0);
+		if ($disp && $disp =~ /filename[*]?=(?:"([^"]+)"|([^;\s]+))/i) {
+			$filename = $1 || $2;
+		}
+	}
+	
+	if (!$filename) {
+		# Try Content-Type header
+		my $type = $part->head->get('Content-Type', 0);
+		if ($type && $type =~ /name[*]?=(?:"([^"]+)"|([^;\s]+))/i) {
+			$filename = $1 || $2;
+		}
+	}
+	
+	# Fallback to content type
+	$filename ||= $part->effective_type;
+	$filename =~ s/\//_/g;
+	
+	return $filename;
+}
+
+__END__
+
+=head1 NAME
+
+eml_to_clamav.pl - Generate ClamAV signatures from EML files
+
+=head1 SYNOPSIS
+
+eml_to_clamav.pl [options] <eml_file>
+
+ Options:
+   -o, --output	 Output signature file (default: signatures.hdb)
+   -p, --prefix	 Signature name prefix (default: EMAIL_MALWARE)
+   -v, --verbose	Verbose output
+   -h, --help	   Show this help message
+
+=head1 DESCRIPTION
+
+This program processes an EML (email) file and generates ClamAV hash signatures
+for the email headers and any attachments found within the email.
+
+The signatures are written in ClamAV's hash database format (.hdb) and can be
+loaded into ClamAV for malware detection.
+
+=head1 EXAMPLES
+
+ # Basic usage
+ perl eml_to_clamav.pl malware.eml
+
+ # Custom output file and prefix
+ perl eml_to_clamav.pl -o my_sigs.hdb -p CUSTOM_MALWARE malware.eml
+
+ # Verbose mode
+ perl eml_to_clamav.pl -v malware.eml
+
+=head1 REQUIREMENTS
+
+This program requires the following Perl modules:
+- MIME::Parser (from MIME-tools)
+- Digest::MD5
+- Digest::SHA
+- File::Temp
+- File::Basename
+- Getopt::Long
+- Pod::Usage
+
+Install with: cpan MIME::tools Digest::MD5 Digest::SHA
+
+=head1 AUTHOR
+
+Nigel Horne
+
+=cut

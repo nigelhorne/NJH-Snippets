@@ -4,9 +4,8 @@ set -e
 export NO_NETWORK_TESTING=1
 
 for i in $(find -L ~/src/njh -type f -name Makefile.PL | sed s/\\/Makefile.PL$//); do
-	echo Testing $i
-	(
-		cd $i && git pull && cpanm -iqn --skip-satisfied --installdeps --notest . && perl Makefile.PL && make && make test && make distcheck && make install
-		make distclean && LANG=de_DE.utf8 LC_ALL=de_DE.utf8 perl Makefile.PL && LANG=de_DE.utf8 LC_ALL=de_DE.utf8 make && LANG=de_DE.utf8 LC_ALL=de_DE.utf8 make test
-	)
+	echo -e "\033[0;31mTesting $i\033[0m"
+	unset LANG LC_ALL
+	cd $i && git pull && cpanm -iqn --skip-satisfied --installdeps --notest . && perl Makefile.PL && make && make test && make distcheck && make install
+	make distclean && LANG=de_DE.utf8 LC_ALL=de_DE.utf8 perl Makefile.PL && LANG=de_DE.utf8 LC_ALL=de_DE.utf8 make && LANG=de_DE.utf8 LC_ALL=de_DE.utf8 make test
 done
