@@ -33,6 +33,10 @@
 # OpenBSD
 # XML::Parser => p5-XML-Parser
 
+# RedHat
+# URI::Find => perl-URI-Find
+# XML::Simple => perl-XML-Simple
+
 use strict;
 use warnings;
 
