@@ -106,7 +106,7 @@ if ($api_port > 0) {
 	exit(0);
 }
 
-pod2usage("Error: No EML files specified") if @ARGV == 0;
+pod2usage('Error: No EML files specified') if(@ARGV == 0);
 
 my @input_paths = @ARGV;
 my @eml_files;
@@ -142,9 +142,9 @@ foreach my $path (@input_paths) {
 	}
 }
 
-die "Error: No EML files found" unless @eml_files;
+die 'Error: No EML files found' unless @eml_files;
 
-print "Found ", scalar(@eml_files), " EML file(s)\n" if $verbose;
+print 'Found ', scalar(@eml_files), " EML file(s)\n" if $verbose;
 
 # Filter by size and validate
 my @valid_files;
@@ -1391,6 +1391,10 @@ Enterprise-grade EML file processor with advanced malware analysis capabilities:
  # Start API server
  perl eml_to_clamav.pl --api-port 8080 --database analysis.db
 
+ # or
+ perl eml_to_clamav.pl --api-port 8080 --database analysis.db \
+  --virustotal-key YOUR_KEY --templates ./templates/
+
  # Large-scale processing with all features
  perl eml_to_clamav.pl -j 16 -r -vv --extract-iocs --fuzzy-hash \
    --yara malware.yar --json results.json --xml results.xml \
@@ -1407,6 +1411,13 @@ When running in API mode:
  GET  /results/{id}	 - Retrieve analysis results
 
 =head1 REQUIREMENTS
+
+Analyze file via API:
+curl -X POST -H "Content-Type: application/octet-stream" \
+     --data-binary @malware.eml http://localhost:8080/analyze
+
+Check server status:
+curl http://localhost:8080/status
 
 Core modules:
  MIME::tools, Digest::MD5, Digest::SHA, Time::HiRes, Encode,
