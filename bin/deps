@@ -3,11 +3,16 @@
 # Debian
 # DBD::CSV => libdbd-csv-perl
 # IO:AIO => libio-aio-perl
+# JSON => libjson-perl
+# Module::Build => libmodule-build-perl
 # Parallel::ForkManager => libparallel-forkmanager-perl
 # Sendmail::PMilter => libsendmail-pmilter-perl
 # Sendmail::Milter => libmail-sendmail-perl
+# Sys::Info => libsys-info-perl
+# Sys::Info::Base => libsys-info-base-perl
 # Test::Needs => libtest-needs-perl
 # Test::Most => libtest-most-perl
+# Test::Sys::Info => libtest-sys-info-perl
 # XML::Twig => libxml-twig-perl
 # HTML::TreeBuilder::XPath => libhtml-treebuilder-xpath-perl
 
