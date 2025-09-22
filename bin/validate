@@ -1,0 +1,26 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use diagnostics;
+use Data::Validate::URI;
+
+my $v = Data::Validate::URI->new();
+
+my $i = $v->is_http_uri('www.bandsman.co.uk');
+
+if($i) {
+	print "www.bandsman.co.uk\n";
+}
+
+$i = $v->is_http_uri('http://www.bandsman.co.uk');
+
+if($i) {
+	print "http://www.bandsman.co.uk\n";
+}
+
+$i = $v->is_http_uri('http://www.bandsman.co');
+
+if($i) {
+	print "http://www.bandsman.co\n";
+}
