@@ -1,0 +1,13 @@
+#!/usr/bin/env perl
+
+use diagnostics;
+use warnings;
+use strict;
+
+use Regexp::Optimizer;
+
+my $o = Regexp::Optimizer->new;
+# my $r = $o->optimize('/\/\/.+?\/(.*)/');
+# my $r = $o->optimize('xenu|linkchecker');
+my $r = $o->optimize('^http:\/\/|^https:\/\/');
+print "$r\n";
