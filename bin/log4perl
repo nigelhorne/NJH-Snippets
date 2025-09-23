@@ -1,0 +1,42 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+use diagnostics;
+
+use Log::Log4perl;
+
+my $conf = <<'EOF';
+log4perl.logger.cb-links.pl=DEBUG, A1, A2
+
+log4perl.appender.A1=Log::Dispatch::File
+log4perl.appender.A1.Filter=RangeDebug
+log4perl.appender.A1.filename=/tmp/cb-links.log
+log4perl.appender.A1.mode=append
+log4perl.appender.A1.layout=Log::Log4perl::Layout::PatternLayout
+log4perl.appender.A1.layout.ConversionPattern=%d %p> %F{1}:%L %M - %m%n
+
+log4perl.appender.A2=Log::Dispatch::Email::MailSendmail
+log4perl.appender.A2.Filter=RangeError
+log4perl.appender.A2.from=webmaster@concert-bands.co.uk
+log4perl.appender.A2.to=njh@concert-bands.co.uk
+log4perl.appender.A2.subject=Error in cb-links
+log4perl.appender.A2.layout=Log::Log4perl::Layout::PatternLayout
+log4perl.appender.A2.layout.ConversionPattern=%d %p> %F{1}:%L %M - %m%n
+
+log4perl.filter.RangeDebug=Log::Log4perl::Filter::LevelRange
+log4perl.filter.RangeDebug.LevelMin=DEBUG
+log4perl.filter.RangeDebug.LevelMax=FATAL
+
+log4perl.filter.RangeError=Log::Log4perl::Filter::LevelRange
+log4perl.filter.RangeError.LevelMin=WARN
+log4perl.filter.RangeError.LevelMax=FATAL
+EOF
+
+Log::Log4perl->init(\$conf);
+
+my $logger = Log::Log4perl->get_logger('cb-links.pl');
+
+$logger->debug('debug');
+$logger->warn('warn');
+$logger->error('error');
