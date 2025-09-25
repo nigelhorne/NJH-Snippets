@@ -1,0 +1,20 @@
+#!/usr/bin/perl -wT
+
+use strict;
+
+print basename("foo.text");
+print "\n";
+print basename("text");
+print "\n";
+print basename("abc.def.g");
+print "\n";
+
+sub basename {
+	my $name = shift;
+
+	if($name =~ /(.+)\..+/) {
+		return $1;
+	}
+
+	return $name;
+}
