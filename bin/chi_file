@@ -1,0 +1,17 @@
+#!/usr/bin/perl -wT
+
+use strict;
+use warnings;
+use diagnostics;
+
+use CHI;
+
+my $c = CHI->new(driver => 'File', root_dir => '/tmp/cache', namespace => 'env.pl');
+
+$c->set("foo/bar/bletch", "fff", '10 minutes');
+
+my %l = map { ($_, $c->get($_)) } $c->get_keys();
+
+foreach (keys %l) {
+	print "$_: $l{$_}\n";
+}
