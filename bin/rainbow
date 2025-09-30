@@ -1,0 +1,24 @@
+#!/usr/bin/env perl
+
+# # prints a rainbow of your input text using ANSI colors.
+
+use strict;
+use warnings;
+use feature 'say';
+
+# ANSI color codes
+my @colors = qw(31 33 32 36 34 35);	# red, yellow, green, cyan, blue, magenta
+
+print 'Enter a phrase: ';
+chomp(my $text = <STDIN>);
+
+my @chars = split //, $text;
+my $i = 0;
+
+for my $c (@chars) {
+	my $color = $colors[$i % @colors];
+	print "\e[${color}m$c\e[0m";	# print colored character
+	$i++;
+}
+
+say '';  # newline
