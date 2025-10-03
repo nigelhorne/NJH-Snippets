@@ -31,7 +31,7 @@ jobs:
           cpanm -iqn --skip-satisfied File::Temp Error::Simple Carp B::Lint warnings::unused
           cpanm -iqn --skip-satisfied Test::Most DBD::CSV Text::xSV::Slurp XML::Simple URI::Find
           cpanm -iqn --skip-satisfied MIME::Parser Digest::MD5 Digest::SHA Getopt::Long Pod::Usage
-          cpanm -iqn --skip-satisfied HTTP::Daemon
+          cpanm -iqn --skip-satisfied HTTP::Daemon Net::DNS
       - name: Run Tests
         run: |
           perl -c bin/eml_to_clamav
