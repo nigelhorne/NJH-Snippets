@@ -3,21 +3,21 @@
 use strict;
 use warnings;
 
-if (eval "require Net::Whois::IANA") {
+if (eval 'require Net::Whois::IANA') {
 	import Net::Whois::IANA;
 } else {
-	die "Sorry, you need Net::Whois::IANA";
+	die 'Sorry, you need Net::Whois::IANA';
 }
 
 my $iana = new Net::Whois::IANA;
 
 foreach (@ARGV) {
 	$iana->whois_query(-ip=>$_);
-	print "Country: " . $iana->country() . "\n";
-	print "Netname: " . $iana->netname() . "\n";
-	print "Descr: "   . $iana->descr()   . "\n";
-	print "Status: "  . $iana->status()  . "\n";
-	print "Source: "  . $iana->source()  . "\n";
-	print "Server: "  . $iana->server()  . "\n";
-	print "Inetnum: " . $iana->inetnum() . "\n";
+	print 'Country: ', $iana->country(), "\n";
+	print 'Netname: ', $iana->netname(), "\n";
+	print 'Descr: ', $iana->descr(), "\n";
+	print 'Status: ', $iana->status(), "\n";
+	print 'Source: ', $iana->source(), "\n";
+	print 'Server: ', $iana->server(), "\n";
+	print 'Inetnum: ', $iana->inetnum(), "\n";
 }
