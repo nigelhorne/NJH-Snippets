@@ -1,0 +1,40 @@
+#!/usr/bin/perl
+
+# Turns the console into a digital clock
+
+use strict;
+use warnings;
+
+use Time::Piece;
+use Time::HiRes 'sleep';
+
+my %digits = (
+	0 => [' __ ', '|  |', '|__|'],
+	1 => ['    ', '   |', '   |'],
+	2 => [' __ ', ' __|', '|__ '],
+	3 => [' __ ', ' __|', ' __|'],
+	4 => ['    ', '|__|', '   |'],
+	5 => [' __ ', '|__ ', ' __|'],
+	6 => [' __ ', '|__ ', '|__|'],
+	7 => [' __ ', '   |', '   |'],
+	8 => [' __ ', '|__|', '|__|'],
+	9 => [' __ ', '|__|', ' __|'],
+	':' => ['   ', ' . ', ' . '],
+);
+
+$| = 1;  # autoflush
+
+while (1) {
+	my $t = localtime->strftime('%H:%M:%S');
+	my @lines = ('', '', '');
+
+	for my $ch (split //, $t) {
+		for my $i (0..2) {
+			$lines[$i] .= $digits{$ch}[$i] . '  ';
+		}
+	}
+
+	print "\e[H\e[J";	# clear screen
+	print join("\n", @lines), "\n";
+	sleep 1;
+}
