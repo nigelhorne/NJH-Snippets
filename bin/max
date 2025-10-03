@@ -1,0 +1,28 @@
+#!/usr/bin/perl
+
+# Find the largest files in the curret tree, sorted by size
+
+use strict;
+use warnings;
+
+use File::Find;
+use File::stat;
+use List::Util 'max';
+
+my @files;
+
+find(
+	sub {
+		return unless -f;	# files only
+		push @files, [ $File::Find::name, -s _ ];
+	},
+	'.'
+);
+
+# sort largest first
+@files = sort { $b->[1] <=> $a->[1] } @files;
+
+# show top 10
+for my $f ( @files[0 .. max(0, $#files < 9 ? $#files : 9)] ) {
+	printf "%10d\t%s\n", $f->[1], $f->[0];
+}

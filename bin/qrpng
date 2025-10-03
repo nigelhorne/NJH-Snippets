@@ -6,4 +6,13 @@ use strict;
 use warnings;
 use Image::PNG::QRCode 'qrpng';
 
-qrpng(text => 'https://forms.office.com/pages/responsepage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAANAAdA6qa1UOEZEUTE4QkMwMTdWSTVFQ01HSVNHS0ZLNS4u', out => 'qr-code.png');
+my $text = join('', @ARGV);
+if((!defined($text)) || (length($text) == 0)) {
+	print 'Enter text to QR-ify: ';
+	chomp($text = <STDIN>);
+}
+
+# qrpng(text => 'https://forms.office.com/pages/responsepage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAANAAdA6qa1UOEZEUTE4QkMwMTdWSTVFQ01HSVNHS0ZLNS4u', out => 'qr-code.png');
+qrpng(text => $text, out => 'qr-code.png');
+
+print "Output saved to qr-code.png\n";

@@ -27,6 +27,10 @@ Show where photographs were taken.
 It reads the GPS (geotag) information from a JPG and reverse geo-codes it to
 print the address.
 
+## max
+
+lists the larges files in the current directory tree, sorted by size.
+
 ## peek.c
 
 Reads input files, converts them to S-records, and sends them 
