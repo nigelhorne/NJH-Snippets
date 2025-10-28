@@ -23,6 +23,8 @@
 # Test::MockModule => perl-test-mockmodule
 # Test::MockObject => perl-test-mockobject
 # Test::RequiresInternet => perl-test-requiresinternet
+# JSON::MaybeXS => perl-json-maybexs
+# JSON::XS => perl-perl-xs
 # XML::Parser => perl-xml-parser
 # XML::Simple => perl-xml-simple
 
