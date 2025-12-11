@@ -1,0 +1,28 @@
+#!/usr/bin/env perl
+
+use utf8;
+use Unicode::GCString;
+
+my $str = '5mplme💩9sUe75ki9K®ruotZdpfhpaogjxHjciaibondvuo0qUuybnruzkcndVxabjqOcvevgjsuevCcbvrj0hqunqmikqrngp5hG';
+
+$str = "\x{301}5mplme\x{1f4a9}9sUe75ki9K\x{ae}ruotZdpfhpaogjxHjciaibondvuo0qUuybnruzkcndVxabjqOcvevgjsuevCcbvrj0hqunqmikqrngp5hG";
+
+$str = '🤣🇨🇦🇨🇦🧠ó🇦🇺🇺🇸🇺🇸x́oh🇨🇦😅á👋🏻t́😅‍🧑🤣🙏🏻s🫠💩🏿v́c👍❤️🏼‍💻👎💩🙏🏻ónh́😂🤣jl😀🏽🇨🇦🥳🇺🇸c🧠🤣🇨🇦ćn😡t😂😁ad́😂v́óeẃś👋👍‍🌺👎d😍‍🌺🧠j́i👋🇨🇦😁🏻‍🧑o😁ń😂‍🧑t🇺🇸i🧠ć🇦🇺💩🇦🇺p😀í😡🇦🇺ḿ🇨🇦👎z🧠😎👋🏽💩🏽ĺ💩👍🏼🇨🇦😂';
+
+print _number_of_characters($str), "\n";
+
+sub _number_of_characters
+{
+	my $value = $_[0];
+
+	return if(!defined($value));
+
+	# if($value !~ /[^[:ascii:]]/) {
+		# return length($value);
+	# }
+	# Decode only if it's not already a Perl character string
+	$value = decode_utf8($value) unless utf8::is_utf8($value);
+
+	my $gc = Unicode::GCString->new($value);
+	return $gc->length;   # visible characters
+}

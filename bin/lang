@@ -1,0 +1,43 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use diagnostics;
+use Readonly;
+
+sub get_message($$);
+Readonly::Scalar my $TITLE => 1;
+Readonly::Scalar my $HOUSE => 2;
+my $language = 'German';
+
+# print get_message($language, $TITLE);
+print get_message($language, $HOUSE), "\n";
+
+sub get_message($$) {
+	my ($language, $message) = @_;
+
+	Readonly::Hash my %english_table => (
+		$TITLE => 'hello',
+		$HOUSE => 'house',
+	);
+	Readonly::Hash my %french_table => (
+		$TITLE => 'bonjour',
+		$HOUSE => 'maison',
+	);
+	Readonly::Hash my %german_table => (
+		$TITLE => 'guten tag',
+	);
+	Readonly::Hash my %tables => (
+		'English' => \%english_table,
+		'French' => \%french_table,
+		'German' => \%german_table,
+	);
+
+	my $table = $tables{$language};
+
+	unless($table && $$table{$message}) {
+		# print "Default to English\n";
+		$table = \%english_table;
+	}
+	return $$table{$message};
+}
