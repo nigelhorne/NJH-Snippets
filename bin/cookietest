@@ -1,0 +1,21 @@
+#!/usr/bin/perl -wT
+
+use strict;
+use warnings;
+use CGI;
+
+my $q = new CGI;
+
+# my $men =  $q->cookie(-name => 'fred', -value => 'barney', -domain => 'example.com', -expired => "+1d");
+# my $women =  $q->cookie(-name => 'wilma', -value => 'betty', -domain => 'example.com', -expired => "+1d");
+
+# print $q->redirect({-cookie => [$men, $women], url => '/foo.html'});
+
+print $q->header({-cookie => [
+	$q->cookie(-name => "n", -value => 'v', -expires => "+1d"),
+	$q->cookie(-name => "p", -value => 'v', -expires => "+1d")]},
+	-type => 'text/html',
+	-charset => 'ISO-8859-1');
+
+print $q->start_html(-bgcolor => '#FFFFFF', -title => 'foo');
+print $q->end_html;
