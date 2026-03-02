@@ -1,0 +1,10 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Text::Capitalize 'capitalize_title';
+
+use utf8;
+use open qw(:std :encoding(UTF-8));
+
+print capitalize_title("l'église Sainte-Bernadette\n");
