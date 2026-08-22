@@ -21,6 +21,7 @@ if(open(my $fin, '-|', 'locate .git')) {
 
 		# Doesn't exist any more
 		next if($line eq '/home/njh/src/njh/OBG');
+		next if($line eq '/home/njh/src/qemu_solaris_sparc');
 
 		print "$line\n";
 		chdir $line;
