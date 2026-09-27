@@ -5,102 +5,208 @@
 use strict;
 use warnings;
 use autodie qw(:all);
- 
+
+use Getopt::Long qw(GetOptions);
+use Pod::Usage qw(pod2usage);
+use IPC::Run3 qw(run3);
 use File::Spec;
-use IPC::Open3;
-use Symbol qw(gensym);
+use File::Path qw(make_path);
  
-sub run_command {
-	my (@cmd) = @_;
+=head1 NAME
  
-	my $stderr = gensym;
+access2csv - Export Access tables to CSV files
  
-	my $pid = open3(
-		undef,
-		my $stdout,
-		$stderr,
-		@cmd,
+=head1 SYNOPSIS
+ 
+accdb_to_csv.pl [options] database.accdb
+ 
+ Options:
+   --output-dir DIR
+   --table TABLE
+   --overwrite
+   --verbose
+   --help
+   --man
+ 
+=head1 EXAMPLES
+ 
+Export all tables:
+ 
+  perl accdb_to_csv.pl music.accdb
+ 
+Export to a specific directory:
+ 
+  perl accdb_to_csv.pl \
+	  --output-dir exports \
+	  music.accdb
+ 
+Export one table:
+ 
+  perl accdb_to_csv.pl \
+	  --table Members \
+	  music.accdb
+ 
+Export multiple tables:
+ 
+  perl accdb_to_csv.pl \
+	  --table Members \
+
+=cut
+
+my %opt = (
+	output_dir => '.',
+	overwrite  => 0,
+	verbose	=> 0,
+);
+ 
+GetOptions(
+	'output-dir=s' => \$opt{output_dir},
+	'table=s@'	 => \$opt{table},
+	'overwrite!'   => \$opt{overwrite},
+	'verbose!'	 => \$opt{verbose},
+	'help|h'	   => sub { pod2usage(1) },
+	'man'		  => sub { pod2usage( -verbose => 2 ) },
+) or pod2usage(2);
+ 
+my $database = shift @ARGV
+	or pod2usage(
+		-message => 'Missing .accdb filename',
+		-exitval => 2
 	);
  
-	my @stdout = <$stdout>;
-	my @stderr = <$stderr>;
+-f $database
+	or die "Database file does not exist: $database\n";
  
-	waitpid( $pid, 0 );
+main();
  
-	my $exit_code = $? >> 8;
+sub main {
  
-	if($exit_code != 0) {
-		die sprintf(
-			"Command failed (%d): %s\n%s",
-			$exit_code,
-			join(' ', @cmd),
-			join('', @stderr),
-		);
+	create_output_dir( $opt{output_dir} );
+ 
+	my @tables = get_tables($database);
+ 
+	if ( $opt{table} ) {
+ 
+		my %wanted = map { $_ => 1 } @{ $opt{table} };
+ 
+		@tables = grep { $wanted{$_} } @tables;
+ 
+		die "None of the requested tables were found\n"
+			unless @tables;
 	}
  
-	return @stdout;
-}
+	verbose("Found " . scalar(@tables) . " table(s)");
  
-sub export_table {
-	my ($database, $table) = @_;
+	my $failures = 0;
  
-	my $csv_file = "$table.csv";
+	foreach my $table (@tables) {
  
-	print "Exporting table '$table' -> '$csv_file'\n";
+		eval {
+			export_table(
+				database   => $database,
+				table	  => $table,
+				output_dir => $opt{output_dir},
+				overwrite  => $opt{overwrite},
+			);
  
-	my @csv_data = run_command(
-		'mdb-export',
-		$database,
-		$table,
-	);
+			1;
+		} or do {
  
-	open my $fh, '>:encoding(UTF-8)', $csv_file;
+			my $error = $@ || 'Unknown error';
  
-	print {$fh} @csv_data;
+			warn "Failed to export '$table': $error";
  
-	close $fh;
+			++$failures;
+		};
+	}
  
-	print "Created $csv_file\n";
+	verbose('Export complete');
+ 
+	exit $failures ? 1 : 0;
 }
  
 sub get_tables {
-	my $database = $_[0];
  
-	my @tables = run_command(
-		'mdb-tables',
-		'-1',
-		$database,
+	my ($db) = @_;
+ 
+	my ( $stdout, $stderr );
+ 
+	run3(
+		[ 'mdb-tables', '-1', $db ],
+		undef,
+		\$stdout,
+		\$stderr,
 	);
  
-	chomp @tables;
+	die "mdb-tables failed:\n$stderr\n"
+		if $?;
  
-	@tables = grep { length } @tables;
+	my @tables = grep { length }
+				 map  { chomp; $_ }
+				 split /\n/, $stdout;
  
 	return @tables;
 }
  
-sub main {
-	my $database = shift @ARGV
-		or die "Usage: $0 database.accdb";
+sub export_table {
  
-	-f $database
-		or die "Database file not found: $database";
+	my %arg = @_;
  
-	my @tables = get_tables($database);
+	my $table = $arg{table};
  
-	die "No tables found in database" unless @tables;
+	my $outfile = File::Spec->catfile(
+		$arg{output_dir},
+		"$table.csv"
+	);
  
-	print "Found ", scalar(@tables), " tables\n";
+	if ( -e $outfile && !$arg{overwrite} ) {
  
-	foreach my $table (@tables) {
-		eval {
-			export_table( $database, $table );
-			1;
-		}
-		or warn "Failed to export '$table': $@";
+		die "Output file already exists: $outfile\n";
 	}
  
-	print "Export complete\n";
+	verbose("Exporting $table");
+ 
+	my ( $stdout, $stderr );
+ 
+	run3(
+		[
+			'mdb-export',
+			$arg{database},
+			$table,
+		],
+		undef,
+		\$stdout,
+		\$stderr,
+	);
+ 
+	die "mdb-export failed for '$table':\n$stderr\n"
+		if $?;
+ 
+	open my $fh, '>:encoding(UTF-8)', $outfile;
+ 
+	print {$fh} $stdout;
+ 
+	close $fh;
+ 
+	verbose("Created $outfile");
 }
  
-main();
+sub create_output_dir {
+ 
+	my ($dir) = @_;
+ 
+	return if -d $dir;
+ 
+	make_path($dir);
+}
+ 
+sub verbose {
+ 
+	my ($msg) = @_;
+ 
+	return unless $opt{verbose};
+ 
+	print "[INFO] $msg\n";
+}
+ 
+__END__
