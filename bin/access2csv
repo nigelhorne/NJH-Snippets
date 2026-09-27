@@ -1,0 +1,106 @@
+#!/usr/bin/env perl
+
+# Translate and MS Access file into a (set of) CSV file(s)
+ 
+use strict;
+use warnings;
+use autodie qw(:all);
+ 
+use File::Spec;
+use IPC::Open3;
+use Symbol qw(gensym);
+ 
+sub run_command {
+	my (@cmd) = @_;
+ 
+	my $stderr = gensym;
+ 
+	my $pid = open3(
+		undef,
+		my $stdout,
+		$stderr,
+		@cmd,
+	);
+ 
+	my @stdout = <$stdout>;
+	my @stderr = <$stderr>;
+ 
+	waitpid( $pid, 0 );
+ 
+	my $exit_code = $? >> 8;
+ 
+	if($exit_code != 0) {
+		die sprintf(
+			"Command failed (%d): %s\n%s",
+			$exit_code,
+			join(' ', @cmd),
+			join('', @stderr),
+		);
+	}
+ 
+	return @stdout;
+}
+ 
+sub export_table {
+	my ($database, $table) = @_;
+ 
+	my $csv_file = "$table.csv";
+ 
+	print "Exporting table '$table' -> '$csv_file'\n";
+ 
+	my @csv_data = run_command(
+		'mdb-export',
+		$database,
+		$table,
+	);
+ 
+	open my $fh, '>:encoding(UTF-8)', $csv_file;
+ 
+	print {$fh} @csv_data;
+ 
+	close $fh;
+ 
+	print "Created $csv_file\n";
+}
+ 
+sub get_tables {
+	my $database = $_[0];
+ 
+	my @tables = run_command(
+		'mdb-tables',
+		'-1',
+		$database,
+	);
+ 
+	chomp @tables;
+ 
+	@tables = grep { length } @tables;
+ 
+	return @tables;
+}
+ 
+sub main {
+	my $database = shift @ARGV
+		or die "Usage: $0 database.accdb";
+ 
+	-f $database
+		or die "Database file not found: $database";
+ 
+	my @tables = get_tables($database);
+ 
+	die "No tables found in database" unless @tables;
+ 
+	print "Found ", scalar(@tables), " tables\n";
+ 
+	foreach my $table (@tables) {
+		eval {
+			export_table( $database, $table );
+			1;
+		}
+		or warn "Failed to export '$table': $@";
+	}
+ 
+	print "Export complete\n";
+}
+ 
+main();
