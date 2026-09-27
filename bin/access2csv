@@ -4,209 +4,471 @@
  
 use strict;
 use warnings;
+ 
 use autodie qw(:all);
-
-use Getopt::Long qw(GetOptions);
-use Pod::Usage qw(pod2usage);
-use IPC::Run3 qw(run3);
-use File::Spec;
+use Encode qw(encode);
+use File::Basename qw(basename);
 use File::Path qw(make_path);
+use File::Spec;
+use Getopt::Long qw(GetOptions);
+use IPC::Run3 qw(run3);
+use Pod::Usage qw(pod2usage);
  
-=head1 NAME
- 
-access2csv - Export Access tables to CSV files
- 
-=head1 SYNOPSIS
- 
-accdb_to_csv.pl [options] database.accdb
- 
- Options:
-   --output-dir DIR
-   --table TABLE
-   --overwrite
-   --verbose
-   --help
-   --man
- 
-=head1 EXAMPLES
- 
-Export all tables:
- 
-  perl accdb_to_csv.pl music.accdb
- 
-Export to a specific directory:
- 
-  perl accdb_to_csv.pl \
-	  --output-dir exports \
-	  music.accdb
- 
-Export one table:
- 
-  perl accdb_to_csv.pl \
-	  --table Members \
-	  music.accdb
- 
-Export multiple tables:
- 
-  perl accdb_to_csv.pl \
-	  --table Members \
-
-=cut
-
-my %opt = (
-	output_dir => '.',
-	overwrite  => 0,
-	verbose	=> 0,
+my %OPT = (
+    output_dir => '.',
+    overwrite  => 0,
+    verbose    => 0,
+    dry_run    => 0,
+    show_counts => 0,
+    encoding   => 'utf8',
 );
  
 GetOptions(
-	'output-dir=s' => \$opt{output_dir},
-	'table=s@'	 => \$opt{table},
-	'overwrite!'   => \$opt{overwrite},
-	'verbose!'	 => \$opt{verbose},
-	'help|h'	   => sub { pod2usage(1) },
-	'man'		  => sub { pod2usage( -verbose => 2 ) },
+    'output-dir=s' => \$OPT{output_dir},
+    'table=s@'     => \$OPT{tables},
+    'overwrite!'   => \$OPT{overwrite},
+    'verbose!'     => \$OPT{verbose},
+    'dry-run!'     => \$OPT{dry_run},
+    'show-counts!' => \$OPT{show_counts},
+    'encoding=s'   => \$OPT{encoding},
+    'help|h'       => sub { pod2usage(1) },
+    'man'          => sub { pod2usage(-verbose => 2) },
 ) or pod2usage(2);
  
-my $database = shift @ARGV
-	or pod2usage(
-		-message => 'Missing .accdb filename',
-		-exitval => 2
-	);
+my $DATABASE = shift @ARGV
+    or pod2usage(
+        -message => 'Missing .accdb file',
+        -exitval => 2,
+    );
  
--f $database
-	or die "Database file does not exist: $database\n";
+-f $DATABASE
+    or die "Database file not found: $DATABASE\n";
+ 
+validate_encoding();
+verify_dependencies();
  
 main();
  
 sub main {
  
-	create_output_dir( $opt{output_dir} );
+    create_output_dir($OPT{output_dir});
  
-	my @tables = get_tables($database);
+    my @tables = get_tables($DATABASE);
  
-	if ( $opt{table} ) {
+    if ($OPT{tables}) {
  
-		my %wanted = map { $_ => 1 } @{ $opt{table} };
+        my %wanted = map { $_ => 1 } @{ $OPT{tables} };
  
-		@tables = grep { $wanted{$_} } @tables;
+        @tables = grep { $wanted{$_} } @tables;
  
-		die "None of the requested tables were found\n"
-			unless @tables;
-	}
+        die "None of the requested tables were found\n"
+            unless @tables;
+    }
  
-	verbose("Found " . scalar(@tables) . " table(s)");
+    verbose(
+        sprintf(
+            'Found %d exportable table(s)',
+            scalar @tables
+        )
+    );
  
-	my $failures = 0;
+    if ($OPT{dry_run}) {
+        dry_run_report(@tables);
+        return;
+    }
  
-	foreach my $table (@tables) {
+    my $failures = 0;
  
-		eval {
-			export_table(
-				database   => $database,
-				table	  => $table,
-				output_dir => $opt{output_dir},
-				overwrite  => $opt{overwrite},
-			);
+    for my $table (@tables) {
  
-			1;
-		} or do {
+        eval {
  
-			my $error = $@ || 'Unknown error';
+            export_table(
+                database => $DATABASE,
+                table    => $table,
+            );
  
-			warn "Failed to export '$table': $error";
+            1;
+        }
+        or do {
  
-			++$failures;
-		};
-	}
+            my $error = $@ || 'Unknown error';
  
-	verbose('Export complete');
+            warn "ERROR exporting '$table': $error";
  
-	exit $failures ? 1 : 0;
-}
+            ++$failures;
+        };
+    }
  
-sub get_tables {
+    verbose('Export complete');
  
-	my ($db) = @_;
- 
-	my ( $stdout, $stderr );
- 
-	run3(
-		[ 'mdb-tables', '-1', $db ],
-		undef,
-		\$stdout,
-		\$stderr,
-	);
- 
-	die "mdb-tables failed:\n$stderr\n"
-		if $?;
- 
-	my @tables = grep { length }
-				 map  { chomp; $_ }
-				 split /\n/, $stdout;
- 
-	return @tables;
+    exit($failures ? 1 : 0);
 }
  
 sub export_table {
  
-	my %arg = @_;
+    my %arg = @_;
  
-	my $table = $arg{table};
+    my $table = $arg{table};
  
-	my $outfile = File::Spec->catfile(
-		$arg{output_dir},
-		"$table.csv"
-	);
+    my $outfile = File::Spec->catfile(
+        $OPT{output_dir},
+        csv_filename($table)
+    );
  
-	if ( -e $outfile && !$arg{overwrite} ) {
+    if (-e $outfile && !$OPT{overwrite}) {
  
-		die "Output file already exists: $outfile\n";
-	}
+        die "Output file already exists: $outfile\n";
+    }
  
-	verbose("Exporting $table");
+    verbose("Exporting table '$table'");
  
-	my ( $stdout, $stderr );
+    my ($stdout, $stderr) = ('', '');
  
-	run3(
-		[
-			'mdb-export',
-			$arg{database},
-			$table,
-		],
-		undef,
-		\$stdout,
-		\$stderr,
-	);
+    run3(
+        [
+            'mdb-export',
+            $arg{database},
+            $table
+        ],
+        undef,
+        \$stdout,
+        \$stderr,
+    );
  
-	die "mdb-export failed for '$table':\n$stderr\n"
-		if $?;
+    if ($?) {
  
-	open my $fh, '>:encoding(UTF-8)', $outfile;
+        my $rc = $? >> 8;
  
-	print {$fh} $stdout;
+        die "mdb-export failed ($rc): $stderr\n";
+    }
  
-	close $fh;
+    write_csv(
+        outfile => $outfile,
+        content => $stdout,
+    );
  
-	verbose("Created $outfile");
+    verbose("Created $outfile");
+}
+ 
+sub get_tables {
+ 
+    my ($database) = @_;
+ 
+    my ($stdout, $stderr) = ('', '');
+ 
+    run3(
+        [
+            'mdb-tables',
+            '-1',
+            $database
+        ],
+        undef,
+        \$stdout,
+        \$stderr,
+    );
+ 
+    if ($?) {
+ 
+        my $rc = $? >> 8;
+ 
+        die "mdb-tables failed ($rc): $stderr\n";
+    }
+ 
+    my @tables =
+        grep { is_exportable_table($_) }
+        grep { length $_ }
+        map  { chomp; $_ }
+        split /\n/, $stdout;
+ 
+    return sort @tables;
+}
+ 
+sub is_exportable_table {
+ 
+    my ($table) = @_;
+ 
+    return 0 unless defined $table;
+ 
+    return 0 if $table =~ /^MSys/i;
+    return 0 if $table =~ /^USys/i;
+    return 0 if $table =~ /^~/;
+    return 0 if $table =~ /^\s*$/;
+ 
+    return 1;
+}
+ 
+sub csv_filename {
+ 
+    my ($table) = @_;
+ 
+    $table =~ s/[<>:"\/\\|?*]/_/g;
+ 
+    return "$table.csv";
+}
+ 
+sub write_csv {
+ 
+    my %arg = @_;
+ 
+    my $outfile = $arg{outfile};
+    my $content = $arg{content};
+ 
+    my $encoding = lc $OPT{encoding};
+ 
+    open my $fh, '>:raw', $outfile;
+ 
+    if ($encoding eq 'utf8-bom') {
+ 
+        print {$fh} "\xEF\xBB\xBF";
+        print {$fh} $content;
+    }
+    elsif ($encoding eq 'cp1252') {
+ 
+        my $decoded = decode_utf8_safe($content);
+ 
+        print {$fh} encode('cp1252', $decoded);
+    }
+    else {
+ 
+        print {$fh} $content;
+    }
+ 
+    close $fh;
+ 
+    return;
+}
+ 
+sub decode_utf8_safe {
+ 
+    my ($text) = @_;
+ 
+    require Encode;
+ 
+    my $decoded;
+ 
+    eval {
+        $decoded = Encode::decode(
+            'UTF-8',
+            $text,
+            Encode::FB_CROAK()
+        );
+        1;
+    }
+    or return $text;
+ 
+    return $decoded;
+}
+ 
+sub dry_run_report {
+ 
+    my (@tables) = @_;
+ 
+    print "\n";
+    print "DRY RUN - NO FILES WILL BE WRITTEN\n\n";
+ 
+    printf "%-40s %-10s %s\n",
+        'TABLE',
+        'ROWS',
+        'OUTPUT FILE';
+ 
+    print "-" x 90, "\n";
+ 
+    for my $table (@tables) {
+ 
+        my $rows = '';
+ 
+        if ($OPT{show_counts}) {
+ 
+            $rows = get_row_count(
+                $DATABASE,
+                $table,
+            );
+        }
+ 
+        my $outfile = File::Spec->catfile(
+            $OPT{output_dir},
+            csv_filename($table),
+        );
+ 
+        printf "%-40s %-10s %s\n",
+            $table,
+            $rows,
+            $outfile;
+    }
+ 
+    print "\n";
+ 
+    return;
+}
+ 
+sub get_row_count {
+ 
+    my ($database, $table) = @_;
+ 
+    my ($stdout, $stderr) = ('', '');
+ 
+    eval {
+ 
+        run3(
+            [
+                'mdb-count',
+                $database,
+                $table,
+            ],
+            undef,
+            \$stdout,
+            \$stderr,
+        );
+ 
+        1;
+    }
+    or return '?';
+ 
+    return '?' if $?;
+ 
+    chomp $stdout;
+ 
+    return $stdout || '?';
+}
+ 
+sub validate_encoding {
+ 
+    my %valid = map {
+        $_ => 1
+    } qw(
+        utf8
+        utf8-bom
+        cp1252
+    );
+ 
+    die "Unsupported encoding '$OPT{encoding}'\n"
+        unless $valid{ lc $OPT{encoding} };
+}
+ 
+sub verify_dependencies {
+ 
+    for my $cmd (
+        qw(
+            mdb-tables
+            mdb-export
+        )
+    ) {
+ 
+        my ($stdout, $stderr) = ('', '');
+ 
+        eval {
+ 
+            run3(
+                [ $cmd, '--help' ],
+                undef,
+                \$stdout,
+                \$stderr,
+            );
+ 
+            1;
+        }
+        or die "Required executable not found: $cmd\n";
+    }
 }
  
 sub create_output_dir {
  
-	my ($dir) = @_;
+    my ($dir) = @_;
  
-	return if -d $dir;
+    return if -d $dir;
  
-	make_path($dir);
+    make_path($dir);
 }
  
 sub verbose {
  
-	my ($msg) = @_;
+    my ($message) = @_;
  
-	return unless $opt{verbose};
+    return unless $OPT{verbose};
  
-	print "[INFO] $msg\n";
+    print "[INFO] $message\n";
 }
  
 __END__
+ 
+=head1 NAME
+ 
+accdb_to_csv.pl
+ 
+=head1 SYNOPSIS
+ 
+Export all tables:
+ 
+    perl accdb_to_csv.pl database.accdb
+ 
+Dry run:
+ 
+    perl accdb_to_csv.pl --dry-run database.accdb
+ 
+Dry run with row counts:
+ 
+    perl accdb_to_csv.pl \
+        --dry-run \
+        --show-counts \
+        database.accdb
+ 
+Export only selected tables:
+ 
+    perl accdb_to_csv.pl \
+        --table Members \
+        --table Attendance \
+        database.accdb
+ 
+Write CSV files to a directory:
+ 
+    perl accdb_to_csv.pl \
+        --output-dir exports \
+        database.accdb
+ 
+Overwrite existing files:
+ 
+    perl accdb_to_csv.pl \
+        --overwrite \
+        database.accdb
+ 
+Excel-friendly UTF-8 BOM:
+ 
+    perl accdb_to_csv.pl \
+        --encoding utf8-bom \
+        database.accdb
+ 
+=head1 OPTIONS
+ 
+    --output-dir DIR
+    --table NAME
+    --overwrite
+    --verbose
+    --dry-run
+    --show-counts
+    --encoding utf8|utf8-bom|cp1252
+    --help
+    --man
+ 
+=head1 REQUIREMENTS
+ 
+mdbtools:
+ 
+    mdb-tables
+    mdb-export
+ 
+Optional:
+ 
+    mdb-count
+ 
+Perl Modules:
+ 
+    autodie
+    Encode
+    File::Path
+    File::Spec
+    Getopt::Long
+    IPC::Run3
+    Pod::Usage
+ 
+=cut
