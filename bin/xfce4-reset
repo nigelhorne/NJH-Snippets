@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+# After updating, XFCE4 tends to hang on logging in.
+# This snippet may fix it
+
+mv .config/xfce4/xfconf/xfce-perchannel-xml .config/xfce4/xfconf/xfce-perchannel-xml.bak
+xfconf-query -c xfwm4 -p /general/use_compositing -s false
+pkill -u njh -f xfce4-session
