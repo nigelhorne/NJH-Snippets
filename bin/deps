@@ -13,6 +13,7 @@
 # Test::Needs => libtest-needs-perl
 # Test::Most => libtest-most-perl
 # Test::Sys::Info => libtest-sys-info-perl
+# Text::CSV => libtext-csv-perl
 # XML::Twig => libxml-twig-perl
 # HTML::TreeBuilder::XPath => libhtml-treebuilder-xpath-perl
 
