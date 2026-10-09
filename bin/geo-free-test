@@ -16,7 +16,10 @@ die 'Set OPENADDR_HOME to enable testing' unless($ENV{'OPENADDR_HOME'});
 
 my %opts;
 getopts('v', \%opts);
-Geo::Coder::Free::DB::init(logger => MyLogger->new()) if($opts{'v'});
+if($opts{'v'}) {
+	require Test::Log::Abstraction;
+	Geo::Coder::Free::DB::init(logger => Test::Log::Abstraction->new(verbose => 1));
+}
 
 my $g = Geo::Coder::Free->new();
 my $o = Geo::Coder::Free::OpenAddresses->new(openaddr => $ENV{'OPENADDR_HOME'});
@@ -54,38 +57,3 @@ sub run {
 		print "$place: $@";
 	}
 }
-
-package MyLogger;
-
-sub new {
-	my ($proto, %args) = @_;
-
-	my $class = ref($proto) || $proto;
-
-	return bless { }, $class;
-}
-
-sub trace {
-	debug(@_);
-}
-
-sub warn {
-	debug(@_);
-}
-
-sub debug {
-	my $self = shift;
-
-	print @_, "\n";
-}
-
-sub AUTOLOAD {
-	our $AUTOLOAD;
-	my $param = $AUTOLOAD;
-
-	unless($param eq 'MyLogger::DESTROY') {
-		die "Need to define $param";
-	}
-}
-
-1;
