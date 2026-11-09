@@ -1,0 +1,183 @@
+#!/usr/bin/env perl
+
+# Probe: can Nominatim give county / district outlines for Database::BI's map?
+#
+# For each place it runs a structured /search (county=, state=, country=),
+# falling back to a free-form q= search, and keeps the first result that is an
+# administrative boundary relation.  It then fetches every outline found with
+# batched /lookup calls (up to 50 OSM ids a request), once simplified
+# (polygon_threshold) and once at full detail, and reports what came back.
+#
+# Nominatim's usage policy: at most one request a second, an identifying
+# User-Agent, cache what you get.  This makes about 25 requests in all.
+#
+# Usage: perl nominatim-boundaries.pl [--threshold 0.005] [--save DIR]
+#   --save DIR writes each simplified outline as DIR/<name>.geojson
+
+use strict;
+use warnings;
+use Getopt::Long;
+use JSON::PP;
+use LWP::UserAgent;
+use Time::HiRes qw(time sleep);
+use URI;
+
+my $threshold = 0.005;	# degrees; about 500 m, ample for a county at state zoom
+my $save_dir;
+GetOptions('threshold=f' => \$threshold, 'save=s' => \$save_dir)
+	or die "Usage: $0 [--threshold N] [--save DIR]\n";
+
+my $BASE = 'https://nominatim.openstreetmap.org';
+
+# Virginia: plain counties, plus two whose name is also an independent city
+# (Fairfax, Richmond), where a name-only search can pick the city.
+# India: districts, which OSM tags admin_level 5; one (Bengaluru Urban) whose
+# name differs from the city's, one (Leh) in a union territory.
+my @PLACES = (
+	{ county => 'Accomack',        state => 'Virginia',    country => 'United States' },
+	{ county => 'Loudoun',         state => 'Virginia',    country => 'United States' },
+	{ county => 'Fairfax',         state => 'Virginia',    country => 'United States' },
+	{ county => 'Richmond',        state => 'Virginia',    country => 'United States' },
+	{ county => 'Pune',            state => 'Maharashtra', country => 'India' },
+	{ county => 'Bengaluru Urban', state => 'Karnataka',   country => 'India' },
+	{ county => 'Nainital',        state => 'Uttarakhand', country => 'India' },
+	{ county => 'Kolkata',         state => 'West Bengal', country => 'India' },
+	{ county => 'Leh',             state => 'Ladakh',      country => 'India' },
+);
+
+# A generic, identifying agent: no personal address goes to the service.
+my $ua = LWP::UserAgent->new(agent => 'Database-BI-boundary-probe/0.023.0', timeout => 30);
+my $json = JSON::PP->new->canonical;
+my $requests = 0;
+my $last = 0;
+
+# One throttled GET; returns the decoded JSON, or undef with a message.
+sub nominatim {
+	my ($path, %query) = @_;
+	my $wait = 1.1 - (time - $last);
+	sleep $wait if $wait > 0;
+	my $uri = URI->new("$BASE/$path");
+	$uri->query_form(%query, format => 'jsonv2');
+	$last = time;
+	$requests++;
+	my $res = $ua->get($uri);
+	unless ($res->is_success) {
+		print "    ! $path failed: ", $res->status_line, "\n";
+		return;
+	}
+	my $data = eval { $json->decode($res->decoded_content) };
+	print "    ! $path: not JSON\n" unless defined $data;
+	return $data;
+}
+
+# The outline we want: an administrative boundary drawn as a relation.
+sub is_boundary {
+	my $r = shift;
+	return ($r->{category} // '') eq 'boundary'
+		&& ($r->{type} // '') eq 'administrative'
+		&& ($r->{osm_type} // '') eq 'relation';
+}
+
+sub describe {
+	my $r = shift;
+	return sprintf '%s/%s addresstype=%s rank=%s %s%s "%s"',
+		$r->{category} // '?', $r->{type} // '?', $r->{addresstype} // '?',
+		$r->{place_rank} // '?', uc substr($r->{osm_type} // '?', 0, 1),
+		$r->{osm_id} // '?', $r->{display_name} // '';
+}
+
+# The level a "county" is in each country: Nominatim calls an Indian district a
+# state_district.  A name shared by a county and an independent city (Fairfax,
+# Richmond) returns both at the same rank, so the level decides, then any
+# boundary as a last resort.
+my @LEVELS = qw(county state_district);
+
+sub pick {
+	my $results = shift;
+	my @boundaries = grep { is_boundary($_) } @$results;
+	for my $level (@LEVELS) {
+		my ($hit) = grep { ($_->{addresstype} // q{}) eq $level } @boundaries;
+		return $hit if $hit;
+	}
+	return $boundaries[0];
+}
+
+# Count the positions in a (Multi)Polygon, to show how much detail arrived.
+sub positions {
+	my $g = shift or return 0;
+	my $n = 0;
+	my $walk;
+	$walk = sub {
+		my $c = shift;
+		if (ref $c->[0]) { $walk->($_) for @$c } else { $n++ }
+	};
+	$walk->($g->{coordinates}) if ref $g->{coordinates};
+	return $n;
+}
+
+print "Searching (structured first, then free-form):\n";
+my %found;	# "R<id>" => place
+for my $p (@PLACES) {
+	my $label = "$p->{county}, $p->{state}, $p->{country}";
+	print "  $label\n";
+	my $hit;
+	my $results = nominatim('search', %$p, limit => 5, addressdetails => 1) // [];
+	print "    structured: ", scalar(@$results), " result(s)\n";
+	print "      - ", describe($_), "\n" for @$results;
+	$hit = pick($results);
+	unless ($hit) {
+		my $suffix = $p->{country} eq 'India' ? 'district' : 'County';
+		my $q = "$p->{county} $suffix, $p->{state}, $p->{country}";
+		$results = nominatim('search', q => $q, limit => 5, addressdetails => 1) // [];
+		print "    free-form \"$q\": ", scalar(@$results), " result(s)\n";
+		print "      - ", describe($_), "\n" for @$results;
+		$hit = pick($results);
+	}
+	if ($hit) {
+		print "    => chose R$hit->{osm_id} ($hit->{addresstype})\n";
+		$found{"R$hit->{osm_id}"} = { %$p, label => $label, addresstype => $hit->{addresstype} };
+	} else {
+		print "    => no boundary relation found\n";
+	}
+}
+
+my @ids = sort keys %found;
+unless (@ids) {
+	print "\nNo outlines to fetch.\n";
+	exit 1;
+}
+
+# /lookup takes up to 50 ids, so 95 counties is two requests.
+for my $pass ([ "simplified (polygon_threshold=$threshold)", polygon_threshold => $threshold ],
+		[ 'full detail', () ]) {
+	my ($title, %extra) = @$pass;
+	print "\nLookup, $title, ", scalar(@ids), " id(s) in one request:\n";
+	my $rows = nominatim('lookup', osm_ids => join(',', @ids), polygon_geojson => 1, %extra) // [];
+	my $total = 0;
+	for my $r (@$rows) {
+		my $key = 'R' . ($r->{osm_id} // '');
+		my $g = $r->{geojson};
+		my $feature = {
+			type => 'Feature',
+			properties => { name => $found{$key}{county}, osm_id => $key },
+			geometry => $g,
+		};
+		my $bytes = length $json->encode($feature);
+		$total += $bytes;
+		printf "  %-28s %-12s %-13s %6d points %8d bytes\n",
+			$found{$key}{county} // $key, $key, $g->{type} // 'none', positions($g), $bytes;
+		if ($save_dir && %extra) {
+			mkdir $save_dir unless -d $save_dir;
+			(my $file = $found{$key}{county} // $key) =~ s/[^\w-]+/_/g;
+			open my $fh, '>', "$save_dir/$file.geojson" or die "$save_dir/$file.geojson: $!";
+			print $fh $json->encode($feature);
+			close $fh;
+		}
+	}
+	my @missing = grep { my $id = $_; !grep { "R$_->{osm_id}" eq $id } @$rows } @ids;
+	print "  missing from the reply: @missing\n" if @missing;
+	printf "  total %d bytes for %d outline(s), %.1f KB each on average\n",
+		$total, scalar(@$rows), @$rows ? $total / @$rows / 1024 : 0;
+}
+
+print "\n$requests request(s) to Nominatim.\n";
